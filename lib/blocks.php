@@ -610,15 +610,15 @@ if ( ! function_exists( 'wp_enqueue_block_view_script' ) ) {
 		$args = wp_parse_args(
 			$args,
 			array(
-				'handle'          => '',
-				'src'             => '',
-				'deps'            => array(),
-				'ver'             => false,
-				'in_footer'       => false,
+				'handle'     => '',
+				'src'        => '',
+				'deps'       => array(),
+				'ver'        => false,
+				'in_footer'  => false,
 
 				// Additional args to allow translations for the script's textdomain.
-				'textdomain'      => '',
-				'textdomain_path' => null,
+				'textdomain' => '',
+				'domainpath' => null,
 			)
 		);
 
@@ -647,7 +647,7 @@ if ( ! function_exists( 'wp_enqueue_block_view_script' ) ) {
 
 			// If a textdomain is defined, use it to set the script translations.
 			if ( ! empty( $args['textdomain'] ) && in_array( 'wp-i18n', $args['deps'], true ) ) {
-				wp_set_script_translations( $args['handle'], $args['textdomain'], $args['textdomain_path'] );
+				wp_set_script_translations( $args['handle'], $args['textdomain'], $args['domainpath'] );
 			}
 
 			return $content;
