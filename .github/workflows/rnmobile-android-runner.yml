@@ -60,7 +60,7 @@ jobs:
 
             - name: Create AVD and generate snapshot for caching
               if: steps.avd-cache.outputs.cache-hit != 'true'
-              uses: reactivecircus/android-emulator-runner@d94c3fbe4fe6a29e4a5ba47c12fb47677c73656b # v2.28.0
+              uses: reactivecircus/android-emulator-runner@eaf4c246b5ce90db0e68560f6443978a636797aa # v2.30.0
               with:
                   api-level: ${{ matrix.api-level }}
                   force-avd-creation: false
@@ -71,7 +71,7 @@ jobs:
                   script: echo "Generated AVD snapshot for caching."
 
             - name: Run tests
-              uses: reactivecircus/android-emulator-runner@d94c3fbe4fe6a29e4a5ba47c12fb47677c73656b # v2.28.0
+              uses: reactivecircus/android-emulator-runner@eaf4c246b5ce90db0e68560f6443978a636797aa # v2.30.0
               with:
                   api-level: ${{ matrix.api-level }}
                   force-avd-creation: false
