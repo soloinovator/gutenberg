@@ -34,7 +34,7 @@
 		"@babel/core": "^7.16.0",
 		"comment-parser": "^1.1.1",
 		"mdast-util-inject": "1.1.0",
-		"optionator": "0.8.2",
+		"optionator": "0.9.1",
 		"remark": "10.0.1",
 		"remark-parse": "6.0.3",
 		"unified": "7.1.0"
