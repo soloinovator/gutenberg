@@ -4,7 +4,7 @@
 	justify-content: center;
 	align-items: flex-start;
 	width: 100%;
-	border-radius: $radius-block-ui;
+	border-radius: $radius-small;
 
 	&.view-mode-grid {
 		padding-top: $grid-unit-05;
@@ -60,7 +60,7 @@
 
 				.block-editor-block-preview__container {
 					min-height: 100px;
-					border-radius: $radius-block-ui;
+					border-radius: $radius-medium;
 					border: $border-width solid $gray-300;
 				}
 
@@ -130,7 +130,9 @@
 				background-color: $white;
 				margin: auto;
 				padding: 0;
-				transition: transform 0.5s, z-index 0.5s;
+				@media not ( prefers-reduced-motion ) {
+					transition: transform 0.5s, z-index 0.5s;
+				}
 				z-index: z-index(".block-editor-block-pattern-setup .pattern-slide");
 
 				&.active-slide {

@@ -241,7 +241,7 @@ _Related_
 
 ### Platform
 
-Component used to detect the current Platform being used. Use Platform.OS === 'web' to detect if running on web enviroment.
+Component used to detect the current Platform being used. Use Platform.OS === 'web' to detect if running on web environment.
 
 This is the same concept as the React Native implementation.
 
@@ -371,7 +371,7 @@ _Related_
 
 _Related_
 
--   <https://reactjs.org/docs/hooks-reference.html#useeffect>
+-   <https://react.dev/reference/react/useEffect>
 
 ### useId
 

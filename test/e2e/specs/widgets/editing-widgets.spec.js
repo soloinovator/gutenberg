@@ -56,7 +56,7 @@ test.describe( 'Widgets screen', () => {
 
 		await page
 			.getByRole( 'toolbar', { name: 'Document tools' } )
-			.getByRole( 'button', { name: 'Toggle block inserter' } )
+			.getByRole( 'button', { name: 'Block Inserter', exact: true } )
 			.click();
 		const blockLibrary = page.getByRole( 'region', {
 			name: 'Block Library',
@@ -207,7 +207,7 @@ test.describe( 'Widgets screen', () => {
 		await inBetweenInserterButton.click();
 
 		const inserterSearchBox = page.getByRole( 'searchbox', {
-			name: 'Search for blocks and patterns',
+			name: 'Search',
 		} );
 		await expect( inserterSearchBox ).toBeFocused();
 
@@ -573,7 +573,7 @@ test.describe( 'Widgets screen', () => {
 			.getByRole( 'document', { name: 'Block: Paragraph' } )
 			.filter( { hasText: 'Second Paragraph' } )
 			.focus();
-		await pageUtils.pressKeys( 'access+z' );
+		await pageUtils.pressKeys( 'shift+Backspace' );
 		await widgetsScreen.saveWidgets();
 
 		await expect.poll( widgetsScreen.getWidgetAreaBlocks ).toMatchObject( {
@@ -698,13 +698,13 @@ class WidgetsScreen {
 		if ( await blockLibrary.isHidden() ) {
 			await this.#page
 				.getByRole( 'toolbar', { name: 'Document tools' } )
-				.getByRole( 'button', { name: 'Toggle block inserter' } )
+				.getByRole( 'button', { name: 'Block Inserter', exact: true } )
 				.click();
 		}
 
 		await blockLibrary
 			.getByRole( 'searchbox', {
-				name: 'Search for blocks and patterns',
+				name: 'Search',
 			} )
 			.fill( blockName );
 

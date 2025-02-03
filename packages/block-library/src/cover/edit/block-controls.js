@@ -26,6 +26,7 @@ export default function CoverBlockControls( {
 	onSelectMedia,
 	currentSettings,
 	toggleUseFeaturedImage,
+	onClearMedia,
 } ) {
 	const { contentPosition, id, useFeaturedImage, minHeight, minHeightUnit } =
 		attributes;
@@ -100,7 +101,8 @@ export default function CoverBlockControls( {
 					onSelect={ onSelectMedia }
 					onToggleFeaturedImage={ toggleUseFeaturedImage }
 					useFeaturedImage={ useFeaturedImage }
-					name={ ! url ? __( 'Add Media' ) : __( 'Replace' ) }
+					name={ ! url ? __( 'Add media' ) : __( 'Replace' ) }
+					onReset={ onClearMedia }
 				/>
 			</BlockControls>
 		</>

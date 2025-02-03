@@ -293,10 +293,7 @@ test.describe( 'Image', () => {
 		).toMatchSnapshot();
 	} );
 
-	// Reason - skipped temporarily until this issue is fixed:
-	// https://github.com/WordPress/wordpress-develop/pull/6875#issuecomment-2185694119
-	// eslint-disable-next-line playwright/no-skipped-test
-	test.skip( 'allows changing aspect ratio using the crop tools', async ( {
+	test( 'allows changing aspect ratio using the crop tools', async ( {
 		editor,
 		page,
 		imageBlockUtils,
@@ -427,9 +424,6 @@ test.describe( 'Image', () => {
 		page,
 		editor,
 	} ) => {
-		// This is a temp workaround for dragging and dropping images from the inserter.
-		// This should be removed when we have the zoom out view for media categories.
-		await page.setViewportSize( { width: 1400, height: 800 } );
 		await editor.insertBlock( { name: 'core/image' } );
 		const imageBlock = editor.canvas.getByRole( 'document', {
 			name: 'Block: Image',
@@ -440,7 +434,8 @@ test.describe( 'Image', () => {
 
 		async function openMediaTab() {
 			const blockInserter = page.getByRole( 'button', {
-				name: 'Toggle block inserter',
+				name: 'Block Inserter',
+				exact: true,
 			} );
 			const isClosed =
 				( await blockInserter.getAttribute( 'aria-pressed' ) ) ===
@@ -530,14 +525,13 @@ test.describe( 'Image', () => {
 			name: 'Block: Image',
 		} );
 
-		const html = `
-			<figure>
-				<img src="https://live.staticflickr.com/3894/14962688165_04759a8b03_b.jpg" alt="Cat">
-				<figcaption>"Cat" by tomhouslay is licensed under <a href="https://creativecommons.org/licenses/by-nc/2.0/?ref=openverse">CC BY-NC 2.0</a>.</figcaption>
-			</figure>
-		`;
-
-		await page.evaluate( ( _html ) => {
+		await page.evaluate( () => {
+			const { createBlock } = window.wp.blocks;
+			const block = createBlock( 'core/image', {
+				url: 'https://live.staticflickr.com/3894/14962688165_04759a8b03_b.jpg',
+				alt: 'Cat',
+				caption: `"Cat" by tomhouslay is licensed under <a href="https://creativecommons.org/licenses/by-nc/2.0/?ref=openverse">CC BY-NC 2.0</a>.`,
+			} );
 			const dummy = document.createElement( 'div' );
 			dummy.style.width = '10px';
 			dummy.style.height = '10px';
@@ -547,13 +541,17 @@ test.describe( 'Image', () => {
 			dummy.style.left = 0;
 			dummy.draggable = 'true';
 			dummy.addEventListener( 'dragstart', ( event ) => {
-				event.dataTransfer.setData( 'text/html', _html );
+				event.dataTransfer.setData(
+					'wp-blocks',
+					JSON.stringify( { blocks: [ block ] } )
+				);
+				event.dataTransfer.setData( 'wp-block:core/image', '' );
 				setTimeout( () => {
 					dummy.remove();
 				}, 0 );
 			} );
 			document.body.appendChild( dummy );
-		}, html );
+		} );
 
 		await page.mouse.move( 0, 0 );
 		await page.mouse.down();
@@ -711,13 +709,14 @@ test.describe( 'Image', () => {
 
 		await editor.clickBlockToolbarButton( 'Upload to Media Library' );
 
-		const imageBlock = editor.canvas.locator(
-			'role=document[name="Block: Image"i]'
+		await expect(
+			editor.canvas
+				.locator( 'role=document[name="Block: Image"i]' )
+				.locator( 'img[src^="http"]' )
+		).toHaveAttribute(
+			'src',
+			expect.stringMatching( /\/wp-content\/uploads\// )
 		);
-		const image = imageBlock.locator( 'img[src^="http"]' );
-		const src = await image.getAttribute( 'src' );
-
-		expect( src ).toMatch( /\/wp-content\/uploads\// );
 	} );
 
 	test( 'should upload through prepublish panel', async ( {
@@ -739,14 +738,45 @@ test.describe( 'Image', () => {
 			.click();
 
 		await expect( page.locator( '.components-spinner' ) ).toHaveCount( 0 );
-
-		const imageBlock = editor.canvas.locator(
-			'role=document[name="Block: Image"i]'
+		await expect(
+			editor.canvas
+				.locator( 'role=document[name="Block: Image"i]' )
+				.locator( 'img[src^="http"]' )
+		).toHaveAttribute(
+			'src',
+			expect.stringMatching( /\/wp-content\/uploads\// )
 		);
-		const image = imageBlock.locator( 'img[src^="http"]' );
-		const src = await image.getAttribute( 'src' );
+	} );
 
-		expect( src ).toMatch( /\/wp-content\/uploads\// );
+	test( 'uploads data url through blobs from raw handling', async ( {
+		editor,
+		page,
+		pageUtils,
+	} ) => {
+		const blobUrl = await page.evaluate( async () => {
+			const canvas = document.createElement( 'canvas' );
+			canvas.width = 20;
+			canvas.height = 20;
+
+			const ctx = canvas.getContext( '2d' );
+			ctx.fillStyle = 'red';
+			ctx.fillRect( 0, 0, 20, 20 );
+
+			return canvas.toDataURL( 'image/png' );
+		} );
+
+		pageUtils.setClipboardData( { html: `<img src="${ blobUrl }">` } );
+
+		await pageUtils.pressKeys( 'primary+v' );
+
+		await expect(
+			editor.canvas
+				.locator( 'role=document[name="Block: Image"i]' )
+				.locator( 'img[src^="http"]' )
+		).toHaveAttribute(
+			'src',
+			expect.stringMatching( /\/wp-content\/uploads\// )
+		);
 	} );
 
 	test( 'should have keyboard navigable link UI popover', async ( {
@@ -829,17 +859,17 @@ test.describe( 'Image', () => {
 			} )
 		).toBeFocused();
 
-		// Select "Expand on click", then remove it.
+		// Select "Enlarge on click", then remove it.
 		await pageUtils.pressKeys( 'Tab' );
 		await page.keyboard.press( 'Enter' );
 		await pageUtils.pressKeys( 'Tab', { times: 5 } );
 		await expect(
-			page.getByRole( 'menuitem', { name: 'Expand on click' } )
+			page.getByRole( 'menuitem', { name: 'Enlarge on click' } )
 		).toBeFocused();
 		await page.keyboard.press( 'Enter' );
 		await expect(
 			page.getByRole( 'button', {
-				name: 'Disable expand on click',
+				name: 'Disable enlarge on click',
 			} )
 		).toBeFocused();
 		await page.keyboard.press( 'Enter' );
@@ -903,7 +933,7 @@ test.describe( 'Image - lightbox', () => {
 
 				await expect(
 					page.getByRole( 'menuitem', {
-						name: 'Expand on click',
+						name: 'Enlarge on click',
 					} )
 				).toBeHidden();
 			} );
@@ -928,16 +958,47 @@ test.describe( 'Image - lightbox', () => {
 
 				await page
 					.getByRole( 'button', {
-						name: 'Disable expand on click',
+						name: 'Disable enlarge on click',
 					} )
 					.click();
 
 				await expect(
 					page.getByRole( 'menuitem', {
-						name: 'Expand on click',
+						name: 'Enlarge on click',
 					} )
 				).toBeHidden();
 			} );
+		} );
+	} );
+
+	test.describe( 'should render as expected on front end', () => {
+		test( "Overlay image should not inherit content image's margins", async ( {
+			editor,
+			page,
+		} ) => {
+			await editor.setContent( `<!-- wp:image {"id":${ uploadedMedia.id },"sizeSlug":"full","linkDestination":"none",
+			"lightbox":{"enabled":true},"style":{"spacing":{"margin":{"top":"var:preset|spacing|40","bottom":"var:preset|spacing|40","left":"var:preset|spacing|40","right":"var:preset|spacing|40"}}}} -->
+			<figure class="wp-block-image size-full" style="margin-top:var(--wp--preset--spacing--40);margin-right:var(--wp--preset--spacing--40);margin-bottom:var(--wp--preset--spacing--40);margin-left:var(--wp--preset--spacing--40)">
+			<img src="${ uploadedMedia.source_url }" alt="" class="wp-image-${ uploadedMedia.id }"/></figure>
+			<!-- /wp:image --> ` );
+
+			const postId = await editor.publishPost();
+			await page.goto( `/?p=${ postId }` );
+
+			const lightboxImage = page.locator( '.wp-lightbox-container img' );
+			await expect( lightboxImage ).toBeVisible();
+			await lightboxImage.click();
+
+			const figure = page
+				.locator( '.wp-lightbox-overlay .wp-block-image' )
+				.first();
+			await expect( figure ).toBeVisible();
+			const margin = await figure.evaluate( ( element ) => {
+				return window
+					.getComputedStyle( element )
+					.getPropertyValue( 'margin' );
+			} );
+			expect( margin ).toBe( '0px' );
 		} );
 	} );
 } );

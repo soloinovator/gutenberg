@@ -63,7 +63,7 @@ test.describe( 'Unsynced pattern', () => {
 
 		// Check that the new pattern is available in the inserter and that it gets inserted as
 		// a plain paragraph block.
-		await page.getByLabel( 'Toggle block inserter' ).click();
+		await page.getByLabel( 'Block Inserter' ).click();
 		await page
 			.getByRole( 'tab', {
 				name: 'Patterns',
@@ -166,7 +166,7 @@ test.describe( 'Synced pattern', () => {
 		).toBe( true );
 
 		// Check that the new pattern is available in the inserter.
-		await page.getByLabel( 'Toggle block inserter' ).click();
+		await page.getByLabel( 'Block Inserter' ).click();
 		await page
 			.getByRole( 'tab', {
 				name: 'Patterns',
@@ -496,11 +496,11 @@ test.describe( 'Synced pattern', () => {
 		} );
 
 		await page
-			.getByRole( 'button', { name: 'Toggle block inserter' } )
+			.getByRole( 'button', { name: 'Block Inserter', exact: true } )
 			.click();
 		await page
 			.getByRole( 'searchbox', {
-				name: 'Search for blocks and patterns',
+				name: 'Search',
 			} )
 			.fill( 'Awesome empty' );
 
@@ -517,7 +517,7 @@ test.describe( 'Synced pattern', () => {
 	test( 'should show a proper message when the reusable block is missing', async ( {
 		editor,
 	} ) => {
-		// Insert a non-existant reusable block.
+		// Insert a non-existent reusable block.
 		await editor.insertBlock( {
 			name: 'core/block',
 			attributes: { ref: 123456 },

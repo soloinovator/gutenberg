@@ -9,7 +9,6 @@ import { __ } from '@wordpress/i18n';
 import { useDispatch } from '@wordpress/data';
 import { store as coreStore } from '@wordpress/core-data';
 import { parse } from '@wordpress/blocks';
-import { useAsyncList } from '@wordpress/compose';
 
 /**
  * Internal dependencies
@@ -38,7 +37,7 @@ export default function SwapTemplateButton( { onClick } ) {
 	return (
 		<>
 			<MenuItem onClick={ () => setShowModal( true ) }>
-				{ __( 'Swap template' ) }
+				{ __( 'Change template' ) }
 			</MenuItem>
 			{ showModal && (
 				<Modal
@@ -71,12 +70,10 @@ function TemplatesList( { postType, onSelect } ) {
 			} ) ),
 		[ availableTemplates ]
 	);
-	const shownTemplates = useAsyncList( templatesAsPatterns );
 	return (
 		<BlockPatternsList
 			label={ __( 'Templates' ) }
 			blockPatterns={ templatesAsPatterns }
-			shownPatterns={ shownTemplates }
 			onClickPattern={ onSelect }
 		/>
 	);

@@ -1,6 +1,7 @@
 .wp-block-image {
 
-	a {
+	> a,
+	> figure > a {
 		display: inline-block;
 	}
 
@@ -9,6 +10,16 @@
 		max-width: 100%;
 		vertical-align: bottom;
 		box-sizing: border-box;
+
+		@media not (prefers-reduced-motion) {
+			&.hide {
+				visibility: hidden;
+			}
+
+			&.show {
+				animation: show-content-image 0.4s;
+			}
+		}
 	}
 
 	// The following style maintains border radius application for deprecated
@@ -32,8 +43,8 @@
 		text-align: center;
 	}
 
-	&.alignfull a,
-	&.alignwide a {
+	&.alignfull > a,
+	&.alignwide > a {
 		width: 100%;
 	}
 
@@ -156,7 +167,9 @@
 		text-align: center;
 		padding: 0;
 		border-radius: 4px;
-		transition: opacity 0.2s ease;
+		@media not (prefers-reduced-motion) {
+			transition: opacity 0.2s ease;
+		}
 
 		&:focus-visible {
 			outline: 3px auto rgb(90 90 90 / 25%);
@@ -269,21 +282,29 @@
 	// or faster than the scrim to give a sense of depth.
 	&.active {
 		visibility: visible;
-		animation: both turn-on-visibility 0.25s;
+		@media not (prefers-reduced-motion) {
+			animation: both turn-on-visibility 0.25s;
+		}
 		img {
-			animation: both turn-on-visibility 0.35s;
+			@media not (prefers-reduced-motion) {
+				animation: both turn-on-visibility 0.35s;
+			}
 		}
 	}
 	&.show-closing-animation {
 		&:not(.active) {
-			animation: both turn-off-visibility 0.35s;
+			@media not (prefers-reduced-motion) {
+				animation: both turn-off-visibility 0.35s;
+			}
 			img {
-				animation: both turn-off-visibility 0.25s;
+				@media not (prefers-reduced-motion) {
+					animation: both turn-off-visibility 0.25s;
+				}
 			}
 		}
 	}
 
-	@media (prefers-reduced-motion: no-preference) {
+	@media not (prefers-reduced-motion) {
 		&.zoom {
 			&.active {
 				opacity: 1;
@@ -316,6 +337,18 @@
 				}
 			}
 		}
+	}
+}
+
+@keyframes show-content-image {
+	0% {
+		visibility: hidden;
+	}
+	99% {
+		visibility: hidden;
+	}
+	100% {
+		visibility: visible;
 	}
 }
 

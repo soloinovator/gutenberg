@@ -77,6 +77,7 @@ export default function RSSEdit( { attributes, setAttributes } ) {
 						<InputControl
 							__next40pxDefaultSize
 							label={ label }
+							type="url"
 							hideLabelFromVision
 							placeholder={ __( 'Enter URL here…' ) }
 							value={ feedURL }
@@ -118,6 +119,19 @@ export default function RSSEdit( { attributes, setAttributes } ) {
 		},
 	];
 
+	/*
+	 * This function merges the existing attributes with additional style properties.
+	 * The `border` and `spacing` properties are set to `undefined` to ensure that
+	 * these styles are reset and not applied on the server side.
+	 */
+	const serverSideAttributes = {
+		...attributes,
+		style: {
+			...attributes?.style,
+			border: undefined,
+			spacing: undefined,
+		},
+	};
 	return (
 		<>
 			<BlockControls>
@@ -189,7 +203,7 @@ export default function RSSEdit( { attributes, setAttributes } ) {
 				<Disabled>
 					<ServerSideRender
 						block="core/rss"
-						attributes={ attributes }
+						attributes={ serverSideAttributes }
 					/>
 				</Disabled>
 			</div>

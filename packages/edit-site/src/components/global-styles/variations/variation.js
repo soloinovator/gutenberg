@@ -9,14 +9,14 @@ import clsx from 'clsx';
 import { Tooltip } from '@wordpress/components';
 import { useMemo, useContext, useState } from '@wordpress/element';
 import { ENTER } from '@wordpress/keycodes';
-import { __, sprintf } from '@wordpress/i18n';
+import { _x, sprintf } from '@wordpress/i18n';
 import { privateApis as blockEditorPrivateApis } from '@wordpress/block-editor';
 import { privateApis as editorPrivateApis } from '@wordpress/editor';
 
 /**
  * Internal dependencies
  */
-import { filterObjectByProperty } from '../../../hooks/use-theme-style-variations/use-theme-style-variations-by-property';
+import { filterObjectByProperties } from '../../../hooks/use-theme-style-variations/use-theme-style-variations-by-property';
 import { unlock } from '../../../lock-unlock';
 
 const { mergeBaseAndUserConfigs } = unlock( editorPrivateApis );
@@ -28,7 +28,7 @@ export default function Variation( {
 	variation,
 	children,
 	isPill,
-	property,
+	properties,
 	showTooltip,
 } ) {
 	const [ isFocused, setIsFocused ] = useState( false );
@@ -36,8 +36,8 @@ export default function Variation( {
 
 	const context = useMemo( () => {
 		let merged = mergeBaseAndUserConfigs( base, variation );
-		if ( property ) {
-			merged = filterObjectByProperty( merged, property );
+		if ( properties ) {
+			merged = filterObjectByProperties( merged, properties );
 		}
 		return {
 			user: variation,
@@ -45,7 +45,7 @@ export default function Variation( {
 			merged,
 			setUserConfig: () => {},
 		};
-	}, [ variation, base, property ] );
+	}, [ variation, base, properties ] );
 
 	const selectVariation = () => setUserConfig( variation );
 
@@ -64,8 +64,8 @@ export default function Variation( {
 	let label = variation?.title;
 	if ( variation?.description ) {
 		label = sprintf(
-			/* translators: %1$s: variation title. %2$s variation description. */
-			__( '%1$s (%2$s)' ),
+			/* translators: 1: variation title. 2: variation description. */
+			_x( '%1$s (%2$s)', 'variation label' ),
 			variation?.title,
 			variation?.description
 		);

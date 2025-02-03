@@ -10,10 +10,10 @@ import {
 	__experimentalToolsPanel as ToolsPanel,
 	__experimentalToolsPanelItem as ToolsPanelItem,
 	__experimentalItemGroup as ItemGroup,
+	__experimentalItem as Item,
 	__experimentalHStack as HStack,
 	__experimentalZStack as ZStack,
 	__experimentalDropdownContentWrapper as DropdownContentWrapper,
-	Button,
 	MenuGroup,
 	ColorIndicator,
 	DuotonePicker,
@@ -144,10 +144,12 @@ export default function FiltersPanel( {
 		const duotonePreset = duotonePalette.find( ( { colors } ) => {
 			return colors === newValue;
 		} );
-		const settedValue = duotonePreset
+		const duotoneValue = duotonePreset
 			? `var:preset|duotone|${ duotonePreset.slug }`
 			: newValue;
-		onChange( setImmutably( value, [ 'filter', 'duotone' ], settedValue ) );
+		onChange(
+			setImmutably( value, [ 'filter', 'duotone' ], duotoneValue )
+		);
 	};
 	const hasDuotone = () => !! value?.filter?.duotone;
 	const resetDuotone = () => setDuotone( undefined );
@@ -189,12 +191,12 @@ export default function FiltersPanel( {
 
 							return (
 								<ItemGroup isBordered isSeparated>
-									<Button { ...toggleProps }>
+									<Item as="button" { ...toggleProps }>
 										<LabeledColorIndicator
 											indicator={ duotone }
 											label={ __( 'Duotone' ) }
 										/>
-									</Button>
+									</Item>
 								</ItemGroup>
 							);
 						} }

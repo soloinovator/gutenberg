@@ -20,14 +20,14 @@ test.describe( 'WP Editor Meta Boxes', () => {
 		await admin.createNewPost();
 
 		// Add title to enable valid non-empty post save.
-		await page
+		await editor.canvas
 			.locator( 'role=textbox[name="Add title"i]' )
 			.type( 'Hello Meta' );
 
 		// Switch tinymce to Text mode, first waiting for it to initialize
 		// because otherwise it will flip back to Visual mode once initialized.
 		await page.locator( '#test_tinymce_id_ifr' ).waitFor();
-		await page.locator( 'role=button[name="Text"i]' ).click();
+		await page.locator( 'role=button[name="Code"i]' ).click();
 
 		// Type something in the tinymce Text mode textarea.
 		const metaBoxField = page.locator( '#test_tinymce_id' );

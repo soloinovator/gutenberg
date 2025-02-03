@@ -1,9 +1,4 @@
 .wp-block-cover {
-	/* Extra specificity needed because the reset.css applied in the editor context is overriding this rule. */
-	.editor-styles-wrapper & {
-		box-sizing: border-box;
-	}
-
 	// Override default cover styles
 	// because we're not ready yet to show the cover block.
 	&.is-placeholder {
@@ -42,12 +37,15 @@
 			width: 100%;
 			z-index: 1;
 		}
+
+		.wp-block-cover__inner-container {
+			z-index: 2;
+		}
 	}
 
 	// Shown while media is being uploaded
 	.components-spinner {
 		position: absolute;
-		z-index: z-index(".wp-block-cover__inner-container");
 		top: 50%;
 		left: 50%;
 		transform: translate(-50%, -50%); // Account for spinner dimensions
@@ -109,10 +107,6 @@
 	}
 }
 
-// When uploading background images, show a transparent overlay.
-.wp-block-cover > .components-drop-zone .components-drop-zone__content {
-	opacity: 0.8 !important;
-}
 
 // Remove the parallax fixed background when in the patterns preview panel as it
 // doesn't work with the transforms that are applied to resize the block in that context.

@@ -198,7 +198,7 @@
 		"parent": "data-basics"
 	},
 	{
-		"title": "Part 4: Building a Create page form",
+		"title": "Building a Create page form",
 		"slug": "4-building-a-create-page-form",
 		"markdown_source": "../docs/how-to-guides/data-basics/4-building-a-create-page-form.md",
 		"parent": "data-basics"
@@ -372,6 +372,12 @@
 		"parent": "block-api"
 	},
 	{
+		"title": "Bindings",
+		"slug": "block-bindings",
+		"markdown_source": "../docs/reference-guides/block-api/block-bindings.md",
+		"parent": "block-api"
+	},
+	{
 		"title": "Context",
 		"slug": "block-context",
 		"markdown_source": "../docs/reference-guides/block-api/block-context.md",
@@ -496,6 +502,36 @@
 		"slug": "interactivity-api",
 		"markdown_source": "../docs/reference-guides/interactivity-api/README.md",
 		"parent": "reference-guides"
+	},
+	{
+		"title": "Core Concepts",
+		"slug": "core-concepts",
+		"markdown_source": "../docs/reference-guides/interactivity-api/core-concepts/README.md",
+		"parent": "interactivity-api"
+	},
+	{
+		"title": "The Reactive and Declarative mindset",
+		"slug": "the-reactive-and-declarative-mindset",
+		"markdown_source": "../docs/reference-guides/interactivity-api/core-concepts/the-reactive-and-declarative-mindset.md",
+		"parent": "core-concepts"
+	},
+	{
+		"title": "Understanding global state, local context and derived state",
+		"slug": "undestanding-global-state-local-context-and-derived-state",
+		"markdown_source": "../docs/reference-guides/interactivity-api/core-concepts/undestanding-global-state-local-context-and-derived-state.md",
+		"parent": "core-concepts"
+	},
+	{
+		"title": "Server-side rendering: Processing directives on the server",
+		"slug": "server-side-rendering",
+		"markdown_source": "../docs/reference-guides/interactivity-api/core-concepts/server-side-rendering.md",
+		"parent": "core-concepts"
+	},
+	{
+		"title": "Using TypeScript",
+		"slug": "using-typescript",
+		"markdown_source": "../docs/reference-guides/interactivity-api/core-concepts/using-typescript.md",
+		"parent": "core-concepts"
 	},
 	{
 		"title": "Quick start guide",
@@ -765,6 +801,12 @@
 		"title": "ComboboxControl",
 		"slug": "combobox-control",
 		"markdown_source": "../packages/components/src/combobox-control/README.md",
+		"parent": "components"
+	},
+	{
+		"title": "Composite",
+		"slug": "composite",
+		"markdown_source": "../packages/components/src/composite/README.md",
 		"parent": "components"
 	},
 	{
@@ -1062,33 +1104,9 @@
 		"parent": "components"
 	},
 	{
-		"title": "NavigatorBackButton",
-		"slug": "navigator-back-button",
-		"markdown_source": "../packages/components/src/navigator/navigator-back-button/README.md",
-		"parent": "components"
-	},
-	{
-		"title": "NavigatorButton",
-		"slug": "navigator-button",
-		"markdown_source": "../packages/components/src/navigator/navigator-button/README.md",
-		"parent": "components"
-	},
-	{
-		"title": "NavigatorProvider",
-		"slug": "navigator-provider",
-		"markdown_source": "../packages/components/src/navigator/navigator-provider/README.md",
-		"parent": "components"
-	},
-	{
-		"title": "NavigatorScreen",
-		"slug": "navigator-screen",
-		"markdown_source": "../packages/components/src/navigator/navigator-screen/README.md",
-		"parent": "components"
-	},
-	{
-		"title": "NavigatorToParentButton",
-		"slug": "navigator-to-parent-button",
-		"markdown_source": "../packages/components/src/navigator/navigator-to-parent-button/README.md",
+		"title": "Navigator",
+		"slug": "navigator",
+		"markdown_source": "../packages/components/src/navigator/README.md",
 		"parent": "components"
 	},
 	{
@@ -1668,6 +1686,12 @@
 		"parent": "packages"
 	},
 	{
+		"title": "@wordpress/fields",
+		"slug": "packages-fields",
+		"markdown_source": "../packages/fields/README.md",
+		"parent": "packages"
+	},
+	{
 		"title": "@wordpress/format-library",
 		"slug": "packages-format-library",
 		"markdown_source": "../packages/format-library/README.md",
@@ -1941,6 +1965,12 @@
 		"title": "@wordpress/undo-manager",
 		"slug": "packages-undo-manager",
 		"markdown_source": "../packages/undo-manager/README.md",
+		"parent": "packages"
+	},
+	{
+		"title": "@wordpress/upload-media",
+		"slug": "packages-upload-media",
+		"markdown_source": "../packages/upload-media/README.md",
 		"parent": "packages"
 	},
 	{

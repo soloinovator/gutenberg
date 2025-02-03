@@ -2,7 +2,7 @@
  * WordPress dependencies
  */
 import { store as coreStore } from '@wordpress/core-data';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _x, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { store as preferencesStore } from '@wordpress/preferences';
@@ -34,7 +34,7 @@ export function setCurrentTemplateId( id ) {
 /**
  * Create a block based template.
  *
- * @param {Object?} template Template to create and assign.
+ * @param {?Object} template Template to create and assign.
  */
 export const createTemplate =
 	( template ) =>
@@ -137,7 +137,9 @@ export const saveDirtyEntities =
 			{ kind: 'postType', name: 'wp_navigation' },
 		];
 		const saveNoticeId = 'site-editor-save-success';
-		const homeUrl = registry.select( coreStore ).getUnstableBase()?.home;
+		const homeUrl = registry
+			.select( coreStore )
+			.getEntityRecord( 'root', '__unstableBase' )?.home;
 		registry.dispatch( noticesStore ).removeNotice( saveNoticeId );
 		const entitiesToSave = dirtyEntityRecords.filter(
 			( { kind, name, key, property } ) => {
@@ -269,7 +271,7 @@ export const revertTemplate =
 
 			const fileTemplatePath = addQueryArgs(
 				`${ templateEntityConfig.baseURL }/${ template.id }`,
-				{ context: 'edit', source: 'theme' }
+				{ context: 'edit', source: template.origin }
 			);
 
 			const fileTemplate = await apiFetch( { path: fileTemplatePath } );
@@ -386,17 +388,21 @@ export const removeTemplates =
 			} )
 		);
 
-		// If all the promises were fulfilled with sucess.
+		// If all the promises were fulfilled with success.
 		if ( promiseResult.every( ( { status } ) => status === 'fulfilled' ) ) {
 			let successMessage;
 
 			if ( items.length === 1 ) {
 				// Depending on how the entity was retrieved its title might be
 				// an object or simple string.
-				const title =
-					typeof items[ 0 ].title === 'string'
-						? items[ 0 ].title
-						: items[ 0 ].title?.rendered;
+				let title;
+				if ( typeof items[ 0 ].title === 'string' ) {
+					title = items[ 0 ].title;
+				} else if ( typeof items[ 0 ].title?.rendered === 'string' ) {
+					title = items[ 0 ].title?.rendered;
+				} else if ( typeof items[ 0 ].title?.raw === 'string' ) {
+					title = items[ 0 ].title?.raw;
+				}
 				successMessage = isResetting
 					? sprintf(
 							/* translators: The template/part's name. */
@@ -404,8 +410,8 @@ export const removeTemplates =
 							decodeEntities( title )
 					  )
 					: sprintf(
-							/* translators: The template/part's name. */
-							__( '"%s" deleted.' ),
+							/* translators: %s: The template/part's name. */
+							_x( '"%s" deleted.', 'template part' ),
 							decodeEntities( title )
 					  );
 			} else {

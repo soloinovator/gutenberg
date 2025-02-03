@@ -12,9 +12,17 @@ import {
 } from '@wordpress/components';
 import {
 	useSettings,
+	privateApis as blockEditorPrivateApis,
 	store as blockEditorStore,
 } from '@wordpress/block-editor';
 import { useSelect } from '@wordpress/data';
+
+/**
+ * Internal dependencies
+ */
+import { unlock } from '../lock-unlock';
+
+const { ResolutionTool } = unlock( blockEditorPrivateApis );
 
 const SCALE_OPTIONS = (
 	<>
@@ -134,6 +142,7 @@ const DimensionControls = ( {
 				panelId={ clientId }
 			>
 				<SelectControl
+					__next40pxDefaultSize
 					__nextHasNoMarginBottom
 					label={ __( 'Aspect ratio' ) }
 					value={ aspectRatio }
@@ -155,6 +164,7 @@ const DimensionControls = ( {
 				panelId={ clientId }
 			>
 				<UnitControl
+					__next40pxDefaultSize
 					label={ __( 'Height' ) }
 					labelPosition="top"
 					value={ height || '' }
@@ -177,6 +187,7 @@ const DimensionControls = ( {
 				panelId={ clientId }
 			>
 				<UnitControl
+					__next40pxDefaultSize
 					label={ __( 'Width' ) }
 					labelPosition="top"
 					value={ width || '' }
@@ -203,6 +214,7 @@ const DimensionControls = ( {
 					panelId={ clientId }
 				>
 					<ToggleGroupControl
+						__next40pxDefaultSize
 						__nextHasNoMarginBottom
 						label={ scaleLabel }
 						value={ scale }
@@ -219,29 +231,19 @@ const DimensionControls = ( {
 				</ToolsPanelItem>
 			) }
 			{ !! imageSizeOptions.length && (
-				<ToolsPanelItem
-					hasValue={ () => !! sizeSlug }
-					label={ __( 'Resolution' ) }
-					onDeselect={ () =>
-						setAttributes( { sizeSlug: undefined } )
-					}
-					resetAllFilter={ () => ( {
-						sizeSlug: undefined,
-					} ) }
-					isShownByDefault={ false }
+				<ResolutionTool
 					panelId={ clientId }
-				>
-					<SelectControl
-						__nextHasNoMarginBottom
-						label={ __( 'Resolution' ) }
-						value={ sizeSlug || DEFAULT_SIZE }
-						options={ imageSizeOptions }
-						onChange={ ( nextSizeSlug ) =>
-							setAttributes( { sizeSlug: nextSizeSlug } )
-						}
-						help={ __( 'Select the size of the source image.' ) }
-					/>
-				</ToolsPanelItem>
+					value={ sizeSlug }
+					defaultValue={ DEFAULT_SIZE }
+					options={ imageSizeOptions }
+					onChange={ ( nextSizeSlug ) =>
+						setAttributes( { sizeSlug: nextSizeSlug } )
+					}
+					isShownByDefault={ false }
+					resetAllFilter={ () => ( {
+						sizeSlug: DEFAULT_SIZE,
+					} ) }
+				/>
 			) }
 		</>
 	);

@@ -8,23 +8,35 @@ const variations = [
 	{
 		isDefault: true,
 		name: 'post-next',
-		title: __( 'Next post' ),
+		title: __( 'Next Post' ),
 		description: __(
 			'Displays the post link that follows the current post.'
 		),
 		icon: next,
 		attributes: { type: 'next' },
 		scope: [ 'inserter', 'transform' ],
+		example: {
+			attributes: {
+				label: __( 'Next post' ),
+				arrow: 'arrow',
+			},
+		},
 	},
 	{
 		name: 'post-previous',
-		title: __( 'Previous post' ),
+		title: __( 'Previous Post' ),
 		description: __(
 			'Displays the post link that precedes the current post.'
 		),
 		icon: previous,
 		attributes: { type: 'previous' },
 		scope: [ 'inserter', 'transform' ],
+		example: {
+			attributes: {
+				label: __( 'Previous post' ),
+				arrow: 'arrow',
+			},
+		},
 	},
 ];
 

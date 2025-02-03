@@ -14,18 +14,20 @@ import { effect } from '@preact/signals';
 /**
  * Internal dependencies
  */
-import {
-	getScope,
-	setScope,
-	resetScope,
-	getNamespace,
-	setNamespace,
-	resetNamespace,
-} from './hooks';
+import { getScope, setScope, resetScope } from './scopes';
+import { getNamespace, setNamespace, resetNamespace } from './namespaces';
 
 interface Flusher {
 	readonly flush: () => void;
 	readonly dispose: () => void;
+}
+
+declare global {
+	interface Window {
+		scheduler?: {
+			readonly yield?: () => Promise< void >;
+		};
+	}
 }
 
 /**
@@ -52,14 +54,16 @@ const afterNextFrame = ( callback: () => void ) => {
 /**
  * Returns a promise that resolves after yielding to main.
  *
- * @return Promise
+ * @return Promise<void>
  */
-export const splitTask = () => {
-	return new Promise( ( resolve ) => {
-		// TODO: Use scheduler.yield() when available.
-		setTimeout( resolve, 0 );
-	} );
-};
+export const splitTask =
+	typeof window.scheduler?.yield === 'function'
+		? window.scheduler.yield.bind( window.scheduler )
+		: () => {
+				return new Promise( ( resolve ) => {
+					setTimeout( resolve, 0 );
+				} );
+		  };
 
 /**
  * Creates a Flusher object that can be used to flush computed values and notify listeners.
@@ -73,9 +77,9 @@ export const splitTask = () => {
  * @param notify  The function that notifies listeners when the value is flushed.
  * @return The Flusher object with `flush` and `dispose` properties.
  */
-function createFlusher( compute: () => unknown, notify: () => void ): Flusher {
+function createFlusher( compute: () => void, notify: () => void ): Flusher {
 	let flush: () => void = () => undefined;
-	const dispose = effect( function ( this: any ) {
+	const dispose = effect( function ( this: any ): void {
 		flush = this.c.bind( this );
 		this.x = compute;
 		this.c = notify;
@@ -115,7 +119,7 @@ export function useSignalEffect( callback: () => unknown ) {
  * accessible whenever the function runs. This is primarily to make the scope
  * available inside hook callbacks.
  *
- * Asyncronous functions should use generators that yield promises instead of awaiting them.
+ * Asynchronous functions should use generators that yield promises instead of awaiting them.
  * See the documentation for details: https://developer.wordpress.org/block-editor/reference-guides/packages/packages-interactivity/packages-interactivity-api-reference/#the-store
  *
  * @param func The passed function.
@@ -145,18 +149,26 @@ export function withScope( func: ( ...args: unknown[] ) => unknown ) {
 				try {
 					it = gen.next( value );
 				} finally {
-					resetNamespace();
 					resetScope();
+					resetNamespace();
 				}
+
 				try {
 					value = await it.value;
 				} catch ( e ) {
+					setNamespace( ns );
+					setScope( scope );
 					gen.throw( e );
+				} finally {
+					resetScope();
+					resetNamespace();
 				}
+
 				if ( it.done ) {
 					break;
 				}
 			}
+
 			return value;
 		};
 	}
@@ -188,7 +200,7 @@ export function useWatch( callback: () => unknown ) {
 
 /**
  * Accepts a function that contains imperative code which runs only after the
- * element's first render, mainly useful for intialization logic.
+ * element's first render, mainly useful for initialization logic.
  *
  * This hook makes the element's scope available so functions like
  * `getElement()` and `getContext()` can be used inside the passed callback.
@@ -346,3 +358,19 @@ export const warn = ( message: string ): void => {
 		logged.add( message );
 	}
 };
+
+/**
+ * Checks if the passed `candidate` is a plain object with just the `Object`
+ * prototype.
+ *
+ * @param candidate The item to check.
+ * @return Whether `candidate` is a plain object.
+ */
+export const isPlainObject = (
+	candidate: unknown
+): candidate is Record< string, unknown > =>
+	Boolean(
+		candidate &&
+			typeof candidate === 'object' &&
+			candidate.constructor === Object
+	);

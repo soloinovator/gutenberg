@@ -12,7 +12,7 @@ import {
 	insert,
 	create,
 } from '@wordpress/rich-text';
-import { isURL, isEmail } from '@wordpress/url';
+import { isURL, isEmail, isPhoneNumber } from '@wordpress/url';
 import {
 	RichTextToolbarButton,
 	RichTextShortcut,
@@ -104,6 +104,13 @@ function Edit( {
 					attributes: { url: `mailto:${ text }` },
 				} )
 			);
+		} else if ( ! isActive && text && isPhoneNumber( text ) ) {
+			onChange(
+				applyFormat( value, {
+					type: name,
+					attributes: { url: `tel:${ text.replace( /\D/g, '' ) }` },
+				} )
+			);
 		} else {
 			if ( target ) {
 				setOpenedBy( {
@@ -163,9 +170,17 @@ function Edit( {
 		openedBy?.el?.tagName === 'A' && openedBy?.action === 'click'
 	);
 
+	const hasSelection = ! isCollapsed( value );
+
 	return (
 		<>
-			<RichTextShortcut type="primary" character="k" onUse={ addLink } />
+			{ hasSelection && (
+				<RichTextShortcut
+					type="primary"
+					character="k"
+					onUse={ addLink }
+				/>
+			) }
 			<RichTextShortcut
 				type="primaryShift"
 				character="k"

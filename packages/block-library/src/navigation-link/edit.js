@@ -9,11 +9,11 @@ import clsx from 'clsx';
 import { createBlock } from '@wordpress/blocks';
 import { useSelect, useDispatch } from '@wordpress/data';
 import {
-	PanelBody,
+	__experimentalToolsPanel as ToolsPanel,
+	__experimentalToolsPanelItem as ToolsPanelItem,
 	TextControl,
 	TextareaControl,
 	ToolbarButton,
-	Tooltip,
 	ToolbarGroup,
 } from '@wordpress/components';
 import { displayShortcut, isKeyboardEvent } from '@wordpress/keycodes';
@@ -156,76 +156,115 @@ function getMissingText( type ) {
 /*
  * Warning, this duplicated in
  * packages/block-library/src/navigation-submenu/edit.js
- * Consider reuseing this components for both blocks.
+ * Consider reusing this components for both blocks.
  */
 function Controls( { attributes, setAttributes, setIsLabelFieldFocused } ) {
 	const { label, url, description, title, rel } = attributes;
 	return (
-		<PanelBody title={ __( 'Settings' ) }>
-			<TextControl
-				__nextHasNoMarginBottom
-				__next40pxDefaultSize
-				value={ label ? stripHTML( label ) : '' }
-				onChange={ ( labelValue ) => {
-					setAttributes( { label: labelValue } );
-				} }
+		<ToolsPanel label={ __( 'Settings' ) }>
+			<ToolsPanelItem
+				hasValue={ () => !! label }
 				label={ __( 'Text' ) }
-				autoComplete="off"
-				onFocus={ () => setIsLabelFieldFocused( true ) }
-				onBlur={ () => setIsLabelFieldFocused( false ) }
-			/>
-			<TextControl
-				__nextHasNoMarginBottom
-				__next40pxDefaultSize
-				value={ url ? safeDecodeURI( url ) : '' }
-				onChange={ ( urlValue ) => {
-					updateAttributes(
-						{ url: urlValue },
-						setAttributes,
-						attributes
-					);
-				} }
+				onDeselect={ () => setAttributes( { label: '' } ) }
+				isShownByDefault
+			>
+				<TextControl
+					__nextHasNoMarginBottom
+					__next40pxDefaultSize
+					label={ __( 'Text' ) }
+					value={ label ? stripHTML( label ) : '' }
+					onChange={ ( labelValue ) => {
+						setAttributes( { label: labelValue } );
+					} }
+					autoComplete="off"
+					onFocus={ () => setIsLabelFieldFocused( true ) }
+					onBlur={ () => setIsLabelFieldFocused( false ) }
+				/>
+			</ToolsPanelItem>
+
+			<ToolsPanelItem
+				hasValue={ () => !! url }
 				label={ __( 'Link' ) }
-				autoComplete="off"
-			/>
-			<TextareaControl
-				__nextHasNoMarginBottom
-				value={ description || '' }
-				onChange={ ( descriptionValue ) => {
-					setAttributes( { description: descriptionValue } );
-				} }
+				onDeselect={ () => setAttributes( { url: '' } ) }
+				isShownByDefault
+			>
+				<TextControl
+					__nextHasNoMarginBottom
+					__next40pxDefaultSize
+					label={ __( 'Link' ) }
+					value={ url ? safeDecodeURI( url ) : '' }
+					onChange={ ( urlValue ) => {
+						updateAttributes(
+							{ url: urlValue },
+							setAttributes,
+							attributes
+						);
+					} }
+					autoComplete="off"
+				/>
+			</ToolsPanelItem>
+
+			<ToolsPanelItem
+				hasValue={ () => !! description }
 				label={ __( 'Description' ) }
-				help={ __(
-					'The description will be displayed in the menu if the current theme supports it.'
-				) }
-			/>
-			<TextControl
-				__nextHasNoMarginBottom
-				__next40pxDefaultSize
-				value={ title || '' }
-				onChange={ ( titleValue ) => {
-					setAttributes( { title: titleValue } );
-				} }
+				onDeselect={ () => setAttributes( { description: '' } ) }
+				isShownByDefault
+			>
+				<TextareaControl
+					__nextHasNoMarginBottom
+					label={ __( 'Description' ) }
+					value={ description || '' }
+					onChange={ ( descriptionValue ) => {
+						setAttributes( { description: descriptionValue } );
+					} }
+					help={ __(
+						'The description will be displayed in the menu if the current theme supports it.'
+					) }
+				/>
+			</ToolsPanelItem>
+
+			<ToolsPanelItem
+				hasValue={ () => !! title }
 				label={ __( 'Title attribute' ) }
-				autoComplete="off"
-				help={ __(
-					'Additional information to help clarify the purpose of the link.'
-				) }
-			/>
-			<TextControl
-				__nextHasNoMarginBottom
-				__next40pxDefaultSize
-				value={ rel || '' }
-				onChange={ ( relValue ) => {
-					setAttributes( { rel: relValue } );
-				} }
+				onDeselect={ () => setAttributes( { title: '' } ) }
+				isShownByDefault
+			>
+				<TextControl
+					__nextHasNoMarginBottom
+					__next40pxDefaultSize
+					label={ __( 'Title attribute' ) }
+					value={ title || '' }
+					onChange={ ( titleValue ) => {
+						setAttributes( { title: titleValue } );
+					} }
+					autoComplete="off"
+					help={ __(
+						'Additional information to help clarify the purpose of the link.'
+					) }
+				/>
+			</ToolsPanelItem>
+
+			<ToolsPanelItem
+				hasValue={ () => !! rel }
 				label={ __( 'Rel attribute' ) }
-				autoComplete="off"
-				help={ __(
-					'The relationship of the linked URL as space-separated link types.'
-				) }
-			/>
-		</PanelBody>
+				onDeselect={ () => setAttributes( { rel: '' } ) }
+				isShownByDefault
+			>
+				<TextControl
+					__nextHasNoMarginBottom
+					__next40pxDefaultSize
+					label={ __( 'Rel attribute' ) }
+					value={ rel || '' }
+					onChange={ ( relValue ) => {
+						setAttributes( { rel: relValue } );
+					} }
+					autoComplete="off"
+					help={ __(
+						'The relationship of the linked URL as space-separated link types.'
+					) }
+				/>
+			</ToolsPanelItem>
+		</ToolsPanel>
 	);
 }
 
@@ -450,10 +489,6 @@ export default function NavigationLinkEdit( {
 	const placeholderText = `(${
 		isInvalid ? __( 'Invalid' ) : __( 'Draft' )
 	})`;
-	const tooltipText =
-		isInvalid || isDraft
-			? __( 'This item has been deleted, or is a draft' )
-			: __( 'This item is missing a link' );
 
 	return (
 		<>
@@ -493,9 +528,7 @@ export default function NavigationLinkEdit( {
 					{ /* eslint-enable */ }
 					{ ! url ? (
 						<div className="wp-block-navigation-link__placeholder-text">
-							<Tooltip text={ tooltipText }>
-								<span>{ missingText }</span>
-							</Tooltip>
+							<span>{ missingText }</span>
 						</div>
 					) : (
 						<>
@@ -527,12 +560,6 @@ export default function NavigationLinkEdit( {
 											) }
 											placeholder={ itemLabelPlaceholder }
 											withoutInteractiveFormatting
-											allowedFormats={ [
-												'core/bold',
-												'core/italic',
-												'core/image',
-												'core/strikethrough',
-											] }
 										/>
 										{ description && (
 											<span className="wp-block-navigation-item__description">
@@ -544,27 +571,30 @@ export default function NavigationLinkEdit( {
 							{ ( isInvalid ||
 								isDraft ||
 								isLabelFieldFocused ) && (
-								<div className="wp-block-navigation-link__placeholder-text wp-block-navigation-link__label">
-									<Tooltip text={ tooltipText }>
-										<span
-											aria-label={ __(
-												'Navigation link text'
-											) }
-										>
-											{
-												// Some attributes are stored in an escaped form. It's a legacy issue.
-												// Ideally they would be stored in a raw, unescaped form.
-												// Unescape is used here to "recover" the escaped characters
-												// so they display without encoding.
-												// See `updateAttributes` for more details.
-												`${ decodeEntities( label ) } ${
-													isInvalid || isDraft
-														? placeholderText
-														: ''
-												}`.trim()
-											}
-										</span>
-									</Tooltip>
+								<div
+									className={ clsx(
+										'wp-block-navigation-link__placeholder-text',
+										'wp-block-navigation-link__label',
+										{
+											'is-invalid': isInvalid,
+											'is-draft': isDraft,
+										}
+									) }
+								>
+									<span>
+										{
+											// Some attributes are stored in an escaped form. It's a legacy issue.
+											// Ideally they would be stored in a raw, unescaped form.
+											// Unescape is used here to "recover" the escaped characters
+											// so they display without encoding.
+											// See `updateAttributes` for more details.
+											`${ decodeEntities( label ) } ${
+												isInvalid || isDraft
+													? placeholderText
+													: ''
+											}`.trim()
+										}
+									</span>
 								</div>
 							) }
 						</>
