@@ -9,10 +9,11 @@ import {
 	__experimentalHStack as HStack,
 	__experimentalVStack as VStack,
 	__experimentalToolsPanelItem as ToolsPanelItem,
+	__experimentalUseCustomUnits as useCustomUnits,
 	Flex,
 	FlexItem,
 } from '@wordpress/components';
-import { __ } from '@wordpress/i18n';
+import { __, _x } from '@wordpress/i18n';
 import { useEffect } from '@wordpress/element';
 import { useSelect, useDispatch } from '@wordpress/data';
 
@@ -21,6 +22,7 @@ import { useSelect, useDispatch } from '@wordpress/data';
  */
 import { useGetNumberOfBlocksBeforeCell } from '../grid/use-get-number-of-blocks-before-cell';
 import { store as blockEditorStore } from '../../store';
+import { useSettings } from '../use-settings';
 
 function helpText( selfStretch, parentLayout ) {
 	const { orientation = 'horizontal' } = parentLayout;
@@ -98,6 +100,17 @@ function FlexControls( {
 	const hasFlexValue = () => !! selfStretch;
 	const flexResetLabel =
 		orientation === 'horizontal' ? __( 'Width' ) : __( 'Height' );
+	const [ availableUnits ] = useSettings( 'spacing.units' );
+	const units = useCustomUnits( {
+		availableUnits: availableUnits || [
+			'%',
+			'px',
+			'em',
+			'rem',
+			'vh',
+			'vw',
+		],
+	} );
 	const resetFlex = () => {
 		onChange( {
 			selfStretch: undefined,
@@ -142,22 +155,32 @@ function FlexControls( {
 				<ToggleGroupControlOption
 					key="fit"
 					value="fit"
-					label={ __( 'Fit' ) }
+					label={ _x(
+						'Fit',
+						'Intrinsic block width in flex layout'
+					) }
 				/>
 				<ToggleGroupControlOption
 					key="fill"
 					value="fill"
-					label={ __( 'Fill' ) }
+					label={ _x(
+						'Grow',
+						'Block with expanding width in flex layout'
+					) }
 				/>
 				<ToggleGroupControlOption
 					key="fixed"
 					value="fixed"
-					label={ __( 'Fixed' ) }
+					label={ _x(
+						'Fixed',
+						'Block with fixed width in flex layout'
+					) }
 				/>
 			</ToggleGroupControl>
 			{ selfStretch === 'fixed' && (
 				<UnitControl
 					size="__unstable-large"
+					units={ units }
 					onChange={ ( value ) => {
 						onChange( {
 							selfStretch,
@@ -165,6 +188,8 @@ function FlexControls( {
 						} );
 					} }
 					value={ flexSize }
+					label={ flexResetLabel }
+					hideLabelFromVision
 				/>
 			) }
 		</VStack>
@@ -184,8 +209,7 @@ function GridControls( {
 	panelId,
 } ) {
 	const { columnStart, rowStart, columnSpan, rowSpan } = childLayout;
-	const { columnCount } = parentLayout ?? {};
-	const gridColumnNumber = parseInt( columnCount, 10 ) || 3;
+	const { columnCount = 3, rowCount } = parentLayout ?? {};
 	const rootClientId = useSelect( ( select ) =>
 		select( blockEditorStore ).getBlockRootClientId( panelId )
 	);
@@ -193,7 +217,7 @@ function GridControls( {
 		useDispatch( blockEditorStore );
 	const getNumberOfBlocksBeforeCell = useGetNumberOfBlocksBeforeCell(
 		rootClientId,
-		gridColumnNumber
+		columnCount
 	);
 	const hasStartValue = () => !! columnStart || !! rowStart;
 	const hasSpanValue = () => !! columnSpan || !! rowSpan;
@@ -225,14 +249,17 @@ function GridControls( {
 					label={ __( 'Column span' ) }
 					type="number"
 					onChange={ ( value ) => {
+						// Don't allow unsetting.
+						const newColumnSpan =
+							value === '' ? 1 : parseInt( value, 10 );
 						onChange( {
 							columnStart,
 							rowStart,
 							rowSpan,
-							columnSpan: value,
+							columnSpan: newColumnSpan,
 						} );
 					} }
-					value={ columnSpan }
+					value={ columnSpan ?? 1 }
 					min={ 1 }
 				/>
 				<InputControl
@@ -240,14 +267,17 @@ function GridControls( {
 					label={ __( 'Row span' ) }
 					type="number"
 					onChange={ ( value ) => {
+						// Don't allow unsetting.
+						const newRowSpan =
+							value === '' ? 1 : parseInt( value, 10 );
 						onChange( {
 							columnStart,
 							rowStart,
 							columnSpan,
-							rowSpan: value,
+							rowSpan: newRowSpan,
 						} );
 					} }
-					value={ rowSpan }
+					value={ rowSpan ?? 1 }
 					min={ 1 }
 				/>
 			</HStack>
@@ -269,8 +299,11 @@ function GridControls( {
 							label={ __( 'Column' ) }
 							type="number"
 							onChange={ ( value ) => {
+								// Don't allow unsetting.
+								const newColumnStart =
+									value === '' ? 1 : parseInt( value, 10 );
 								onChange( {
-									columnStart: value,
+									columnStart: newColumnStart,
 									rowStart,
 									columnSpan,
 									rowSpan,
@@ -281,16 +314,16 @@ function GridControls( {
 									rootClientId,
 									rootClientId,
 									getNumberOfBlocksBeforeCell(
-										value,
+										newColumnStart,
 										rowStart
 									)
 								);
 							} }
-							value={ columnStart }
+							value={ columnStart ?? 1 }
 							min={ 1 }
 							max={
-								gridColumnNumber
-									? gridColumnNumber - ( columnSpan ?? 1 ) + 1
+								columnCount
+									? columnCount - ( columnSpan ?? 1 ) + 1
 									: undefined
 							}
 						/>
@@ -301,9 +334,12 @@ function GridControls( {
 							label={ __( 'Row' ) }
 							type="number"
 							onChange={ ( value ) => {
+								// Don't allow unsetting.
+								const newRowStart =
+									value === '' ? 1 : parseInt( value, 10 );
 								onChange( {
 									columnStart,
-									rowStart: value,
+									rowStart: newRowStart,
 									columnSpan,
 									rowSpan,
 								} );
@@ -314,17 +350,15 @@ function GridControls( {
 									rootClientId,
 									getNumberOfBlocksBeforeCell(
 										columnStart,
-										value
+										newRowStart
 									)
 								);
 							} }
-							value={ rowStart }
+							value={ rowStart ?? 1 }
 							min={ 1 }
 							max={
-								parentLayout?.rowCount
-									? parentLayout.rowCount -
-									  ( rowSpan ?? 1 ) +
-									  1
+								rowCount
+									? rowCount - ( rowSpan ?? 1 ) + 1
 									: undefined
 							}
 						/>

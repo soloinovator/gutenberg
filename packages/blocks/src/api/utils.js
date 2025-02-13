@@ -12,6 +12,7 @@ import { Component, isValidElement } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { __unstableStripHTML as stripHTML } from '@wordpress/dom';
 import { RichTextData } from '@wordpress/rich-text';
+import deprecated from '@wordpress/deprecated';
 
 /**
  * Internal dependencies
@@ -266,6 +267,17 @@ export function getDefault( attributeSchema ) {
 }
 
 /**
+ * Check if a block is registered.
+ *
+ * @param {string} name The block's name.
+ *
+ * @return {boolean} Whether the block is registered.
+ */
+export function isBlockRegistered( name ) {
+	return getBlockType( name ) !== undefined;
+}
+
+/**
  * Ensure attributes contains only values defined by block type, and merge
  * default values for missing attributes.
  *
@@ -332,7 +344,7 @@ export function __experimentalSanitizeBlockAttributes( name, attributes ) {
  *
  * @return {string[]} The attribute names that have the provided role.
  */
-export function __experimentalGetBlockAttributesNamesByRole( name, role ) {
+export function getBlockAttributesNamesByRole( name, role ) {
 	const attributes = getBlockType( name )?.attributes;
 	if ( ! attributes ) {
 		return [];
@@ -341,10 +353,56 @@ export function __experimentalGetBlockAttributesNamesByRole( name, role ) {
 	if ( ! role ) {
 		return attributesNames;
 	}
-	return attributesNames.filter(
-		( attributeName ) =>
-			attributes[ attributeName ]?.__experimentalRole === role
-	);
+
+	return attributesNames.filter( ( attributeName ) => {
+		const attribute = attributes[ attributeName ];
+		if ( attribute?.role === role ) {
+			return true;
+		}
+		if ( attribute?.__experimentalRole === role ) {
+			deprecated( '__experimentalRole attribute', {
+				since: '6.7',
+				version: '6.8',
+				alternative: 'role attribute',
+				hint: `Check the block.json of the ${ name } block.`,
+			} );
+			return true;
+		}
+		return false;
+	} );
+}
+
+export const __experimentalGetBlockAttributesNamesByRole = ( ...args ) => {
+	deprecated( '__experimentalGetBlockAttributesNamesByRole', {
+		since: '6.7',
+		version: '6.8',
+		alternative: 'getBlockAttributesNamesByRole',
+	} );
+	return getBlockAttributesNamesByRole( ...args );
+};
+
+/**
+ * Checks if a block is a content block by examining its attributes.
+ * A block is considered a content block if it has at least one attribute
+ * with a role of 'content'.
+ *
+ * @param {string} name The name of the block to check.
+ * @return {boolean}    Whether the block is a content block.
+ */
+export function isContentBlock( name ) {
+	const attributes = getBlockType( name )?.attributes;
+
+	if ( ! attributes ) {
+		return false;
+	}
+
+	return !! Object.keys( attributes )?.some( ( attributeKey ) => {
+		const attribute = attributes[ attributeKey ];
+		return (
+			attribute?.role === 'content' ||
+			attribute?.__experimentalRole === 'content'
+		);
+	} );
 }
 
 /**

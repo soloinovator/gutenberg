@@ -9,7 +9,7 @@ import {
 	__experimentalText as Text,
 	__experimentalVStack as VStack,
 } from '@wordpress/components';
-import { store as editorStore } from '@wordpress/editor';
+import { store as coreStore } from '@wordpress/core-data';
 import { useSelect } from '@wordpress/data';
 import { __, sprintf } from '@wordpress/i18n';
 import { moreVertical } from '@wordpress/icons';
@@ -32,7 +32,8 @@ export default function PatternsHeader( {
 	const { patternCategories } = usePatternCategories();
 	const templatePartAreas = useSelect(
 		( select ) =>
-			select( editorStore ).__experimentalGetDefaultTemplatePartAreas(),
+			select( coreStore ).getEntityRecord( 'root', '__unstableBase' )
+				?.default_template_part_areas || [],
 		[]
 	);
 
@@ -80,7 +81,7 @@ export default function PatternsHeader( {
 							label={ __( 'Actions' ) }
 							toggleProps={ {
 								className: 'edit-site-patterns__button',
-								describedBy: sprintf(
+								description: sprintf(
 									/* translators: %s: pattern category name */
 									__( 'Action menu for %s pattern category' ),
 									title

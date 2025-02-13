@@ -7,6 +7,7 @@ import {
 	FlexItem,
 	SearchControl,
 	__experimentalHStack as HStack,
+	__experimentalText as Text,
 } from '@wordpress/components';
 import { useSelect } from '@wordpress/data';
 import {
@@ -86,16 +87,9 @@ function BlockMenuItem( { block } ) {
 		return null;
 	}
 
-	const navigationButtonLabel = sprintf(
-		// translators: %s: is the name of a block e.g., 'Image' or 'Table'.
-		__( '%s block styles' ),
-		block.title
-	);
-
 	return (
 		<NavigationButtonAsItem
 			path={ '/blocks/' + encodeURIComponent( block.name ) }
-			aria-label={ navigationButtonLabel }
 		>
 			<HStack justify="flex-start">
 				<BlockIcon icon={ block.icon } />
@@ -144,13 +138,21 @@ function BlockList( { filterValue } ) {
 		<div
 			ref={ blockTypesListRef }
 			className="edit-site-block-types-item-list"
+			// By default, BlockMenuItem has a role=listitem so this div must have a list role.
+			role="list"
 		>
-			{ filteredBlockTypes.map( ( block ) => (
-				<BlockMenuItem
-					block={ block }
-					key={ 'menu-itemblock-' + block.name }
-				/>
-			) ) }
+			{ filteredBlockTypes.length === 0 ? (
+				<Text align="center" as="p">
+					{ __( 'No blocks found.' ) }
+				</Text>
+			) : (
+				filteredBlockTypes.map( ( block ) => (
+					<BlockMenuItem
+						block={ block }
+						key={ 'menu-itemblock-' + block.name }
+					/>
+				) )
+			) }
 		</div>
 	);
 }
@@ -174,7 +176,7 @@ function ScreenBlockList() {
 				className="edit-site-block-types-search"
 				onChange={ setFilterValue }
 				value={ filterValue }
-				label={ __( 'Search for blocks' ) }
+				label={ __( 'Search' ) }
 				placeholder={ __( 'Search' ) }
 			/>
 			<MemoizedBlockList filterValue={ deferredFilterValue } />

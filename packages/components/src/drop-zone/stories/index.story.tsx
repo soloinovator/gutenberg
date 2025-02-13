@@ -9,7 +9,8 @@ import DropZone from '..';
 
 const meta: Meta< typeof DropZone > = {
 	component: DropZone,
-	title: 'Components/DropZone',
+	id: 'components-dropzone',
+	title: 'Components/Selection & Input/File Upload/DropZone',
 	parameters: {
 		actions: { argTypesRegex: '^on.*' },
 		controls: { expanded: true },
@@ -20,7 +21,13 @@ export default meta;
 
 const Template: StoryFn< typeof DropZone > = ( props ) => {
 	return (
-		<div style={ { background: 'lightgray', padding: 16 } }>
+		<div
+			style={ {
+				background: 'lightgray',
+				padding: 32,
+				position: 'relative',
+			} }
+		>
 			Drop something here
 			<DropZone { ...props } />
 		</div>

@@ -20,21 +20,8 @@ const DEFAULT_OPTION: FontSizePickerSelectOption = {
 	value: undefined,
 };
 
-const CUSTOM_OPTION: FontSizePickerSelectOption = {
-	key: 'custom',
-	name: __( 'Custom' ),
-};
-
 const FontSizePickerSelect = ( props: FontSizePickerSelectProps ) => {
-	const {
-		__next40pxDefaultSize,
-		fontSizes,
-		value,
-		disableCustomFontSizes,
-		size,
-		onChange,
-		onSelectCustom,
-	} = props;
+	const { __next40pxDefaultSize, fontSizes, value, size, onChange } = props;
 
 	const areAllSizesSameUnit = !! getCommonSizeUnit( fontSizes );
 
@@ -56,19 +43,18 @@ const FontSizePickerSelect = ( props: FontSizePickerSelectProps ) => {
 				key: fontSize.slug,
 				name: fontSize.name || fontSize.slug,
 				value: fontSize.size,
-				__experimentalHint: hint,
+				hint,
 			};
 		} ),
-		...( disableCustomFontSizes ? [] : [ CUSTOM_OPTION ] ),
 	];
 
-	const selectedOption = value
-		? options.find( ( option ) => option.value === value ) ?? CUSTOM_OPTION
-		: DEFAULT_OPTION;
+	const selectedOption =
+		options.find( ( option ) => option.value === value ) ?? DEFAULT_OPTION;
 
 	return (
 		<CustomSelectControl
 			__next40pxDefaultSize={ __next40pxDefaultSize }
+			__shouldNotWarnDeprecated36pxSize
 			className="components-font-size-picker__select"
 			label={ __( 'Font size' ) }
 			hideLabelFromVision
@@ -79,17 +65,13 @@ const FontSizePickerSelect = ( props: FontSizePickerSelectProps ) => {
 			) }
 			options={ options }
 			value={ selectedOption }
-			__experimentalShowSelectedHint
+			showSelectedHint
 			onChange={ ( {
 				selectedItem,
 			}: {
 				selectedItem: FontSizePickerSelectOption;
 			} ) => {
-				if ( selectedItem === CUSTOM_OPTION ) {
-					onSelectCustom();
-				} else {
-					onChange( selectedItem.value );
-				}
+				onChange( selectedItem.value );
 			} }
 			size={ size }
 		/>

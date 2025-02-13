@@ -1,6 +1,6 @@
 {
 	"name": "@wordpress/nux",
-	"version": "9.2.0",
+	"version": "9.18.0",
 	"description": "NUX (New User eXperience) module for WordPress.",
 	"author": "The WordPress Contributors",
 	"license": "GPL-2.0-or-later",
@@ -25,13 +25,14 @@
 	"main": "build/index.js",
 	"module": "build-module/index.js",
 	"react-native": "src/index",
+	"wpScript": true,
 	"sideEffects": [
 		"build-style/**",
 		"src/**/*.scss",
 		"{src,build,build-module}/{index.js,store/index.js}"
 	],
 	"dependencies": {
-		"@babel/runtime": "^7.16.0",
+		"@babel/runtime": "7.25.7",
 		"@wordpress/components": "file:../components",
 		"@wordpress/compose": "file:../compose",
 		"@wordpress/data": "file:../data",

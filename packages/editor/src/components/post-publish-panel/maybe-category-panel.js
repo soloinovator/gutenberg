@@ -16,9 +16,16 @@ import { store as editorStore } from '../../store';
 function MaybeCategoryPanel() {
 	const hasNoCategory = useSelect( ( select ) => {
 		const postType = select( editorStore ).getCurrentPostType();
-		const { canUser, getEntityRecord, getTaxonomy } = select( coreStore );
-		const categoriesTaxonomy = getTaxonomy( 'category' );
-		const defaultCategoryId = canUser( 'read', 'settings' )
+		const { canUser, getEntityRecord } = select( coreStore );
+		const categoriesTaxonomy = getEntityRecord(
+			'root',
+			'taxonomy',
+			'category'
+		);
+		const defaultCategoryId = canUser( 'read', {
+			kind: 'root',
+			name: 'site',
+		} )
 			? getEntityRecord( 'root', 'site' )?.default_category
 			: undefined;
 		const defaultCategory = defaultCategoryId

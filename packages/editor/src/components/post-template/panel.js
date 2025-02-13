@@ -16,7 +16,7 @@ import PostPanelRow from '../post-panel-row';
 /**
  * Displays the template controls based on the current editor settings and user permissions.
  *
- * @return {JSX.Element|null} The rendered PostTemplatePanel component.
+ * @return {React.ReactNode} The rendered PostTemplatePanel component.
  */
 export default function PostTemplatePanel() {
 	const { templateId, isBlockTheme } = useSelect( ( select ) => {
@@ -48,12 +48,20 @@ export default function PostTemplatePanel() {
 		}
 
 		const canCreateTemplates =
-			select( coreStore ).canUser( 'create', 'templates' ) ?? false;
+			select( coreStore ).canUser( 'create', {
+				kind: 'postType',
+				name: 'wp_template',
+			} ) ?? false;
 		return canCreateTemplates;
 	}, [] );
 
 	const canViewTemplates = useSelect( ( select ) => {
-		return select( coreStore ).canUser( 'read', 'templates' ) ?? false;
+		return (
+			select( coreStore ).canUser( 'read', {
+				kind: 'postType',
+				name: 'wp_template',
+			} ) ?? false
+		);
 	}, [] );
 
 	if ( ( ! isBlockTheme || ! canViewTemplates ) && isVisible ) {

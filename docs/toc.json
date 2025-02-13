@@ -159,6 +159,9 @@
 					{
 						"docs/reference-guides/block-api/block-attributes.md": []
 					},
+					{
+						"docs/reference-guides/block-api/block-bindings.md": []
+					},
 					{ "docs/reference-guides/block-api/block-context.md": [] },
 					{
 						"docs/reference-guides/block-api/block-deprecation.md": []
@@ -204,6 +207,22 @@
 			},
 			{
 				"docs/reference-guides/interactivity-api/README.md": [
+					{
+						"docs/reference-guides/interactivity-api/core-concepts/README.md": [
+							{
+								"docs/reference-guides/interactivity-api/core-concepts/the-reactive-and-declarative-mindset.md": []
+							},
+							{
+								"docs/reference-guides/interactivity-api/core-concepts/undestanding-global-state-local-context-and-derived-state.md": []
+							},
+							{
+								"docs/reference-guides/interactivity-api/core-concepts/server-side-rendering.md": []
+							},
+							{
+								"docs/reference-guides/interactivity-api/core-concepts/using-typescript.md": []
+							}
+						]
+					},
 					{
 						"docs/reference-guides/interactivity-api/iapi-quick-start-guide.md": []
 					},
