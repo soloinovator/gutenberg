@@ -6,7 +6,7 @@ import { store, privateApis, getConfig } from '@wordpress/interactivity';
 /**
  * Internal dependencies
  */
-import { fetchHeadAssets, updateHead } from './head';
+import { generateCSSStyleSheets } from './assets/styles';
 
 const {
 	directivePrefix,
@@ -14,8 +14,8 @@ const {
 	initialVdom,
 	toVdom,
 	render,
-	parseInitialData,
-	populateInitialData,
+	parseServerData,
+	populateServerData,
 	batch,
 } = privateApis(
 	'I acknowledge that using private APIs means my theme or plugin will inevitably break in the next version of WordPress.'
@@ -37,16 +37,18 @@ interface PrefetchOptions {
 
 interface VdomParams {
 	vdom?: typeof initialVdom;
+	baseUrl?: string;
 }
 
 interface Page {
 	regions: Record< string, any >;
-	head: HTMLHeadElement[];
+	styles: Promise< CSSStyleSheet >[];
+	scriptModules: string[];
 	title: string;
 	initialData: any;
 }
 
-type RegionsToVdom = ( dom: Document, params?: VdomParams ) => Promise< Page >;
+type RegionsToVdom = ( dom: Document, params?: VdomParams ) => Page;
 
 // Check if the navigation mode is full page or region based.
 const navigationMode: 'regionBased' | 'fullPage' =
@@ -54,7 +56,6 @@ const navigationMode: 'regionBased' | 'fullPage' =
 
 // The cache of visited and prefetched pages, stylesheets and scripts.
 const pages = new Map< string, Promise< Page | false > >();
-const headElements = new Map< string, { tag: HTMLElement; text: string } >();
 
 // Helper to remove domain and hash from the URL. We are only interesting in
 // caching the path and the query.
@@ -74,7 +75,7 @@ const fetchPage = async ( url: string, { html }: { html: string } ) => {
 			html = await res.text();
 		}
 		const dom = new window.DOMParser().parseFromString( html, 'text/html' );
-		return regionsToVdom( dom );
+		return regionsToVdom( dom, { baseUrl: url } );
 	} catch ( e ) {
 		return false;
 	}
@@ -82,12 +83,17 @@ const fetchPage = async ( url: string, { html }: { html: string } ) => {
 
 // Return an object with VDOM trees of those HTML regions marked with a
 // `router-region` directive.
-const regionsToVdom: RegionsToVdom = async ( dom, { vdom } = {} ) => {
+const regionsToVdom: RegionsToVdom = ( dom, { vdom, baseUrl } = {} ) => {
 	const regions = { body: undefined };
-	let head: HTMLElement[];
+	const styles = generateCSSStyleSheets( dom, baseUrl );
+	const scriptModules = [
+		...dom.querySelectorAll< HTMLScriptElement >(
+			'script[type=module][src]'
+		),
+	].map( ( s ) => s.src );
+
 	if ( globalThis.IS_GUTENBERG_PLUGIN ) {
 		if ( navigationMode === 'fullPage' ) {
-			head = await fetchHeadAssets( dom, headElements );
 			regions.body = vdom
 				? vdom.get( document.body )
 				: toVdom( dom.body );
@@ -103,24 +109,40 @@ const regionsToVdom: RegionsToVdom = async ( dom, { vdom } = {} ) => {
 		} );
 	}
 	const title = dom.querySelector( 'title' )?.innerText;
-	const initialData = parseInitialData( dom );
-	return { regions, head, title, initialData };
+	const initialData = parseServerData( dom );
+	return { regions, styles, scriptModules, title, initialData };
 };
 
 // Render all interactive regions contained in the given page.
-const renderRegions = ( page: Page ) => {
-	batch( () => {
-		if ( globalThis.IS_GUTENBERG_PLUGIN ) {
-			if ( navigationMode === 'fullPage' ) {
-				// Once this code is tested and more mature, the head should be updated for region based navigation as well.
-				updateHead( page.head );
-				const fragment = getRegionRootFragment( document.body );
+const renderRegions = async ( page: Page ) => {
+	// Wait for styles and modules to be ready.
+	await Promise.all( [
+		...page.styles,
+		...page.scriptModules.map(
+			( src ) => import( /* webpackIgnore: true */ src )
+		),
+	] );
+	// Replace style sheets.
+	const sheets = await Promise.all( page.styles );
+	window.document
+		.querySelectorAll( 'style,link[rel=stylesheet]' )
+		.forEach( ( element ) => element.remove() );
+	window.document.adoptedStyleSheets = sheets;
+
+	if ( globalThis.IS_GUTENBERG_PLUGIN ) {
+		if ( navigationMode === 'fullPage' ) {
+			// Update HTML.
+			const fragment = getRegionRootFragment( document.body );
+			batch( () => {
+				populateServerData( page.initialData );
 				render( page.regions.body, fragment );
-			}
+			} );
 		}
-		if ( navigationMode === 'regionBased' ) {
-			populateInitialData( page.initialData );
-			const attrName = `data-${ directivePrefix }-router-region`;
+	}
+	if ( navigationMode === 'regionBased' ) {
+		const attrName = `data-${ directivePrefix }-router-region`;
+		batch( () => {
+			populateServerData( page.initialData );
 			document
 				.querySelectorAll( `[${ attrName }]` )
 				.forEach( ( region ) => {
@@ -128,11 +150,11 @@ const renderRegions = ( page: Page ) => {
 					const fragment = getRegionRootFragment( region );
 					render( page.regions[ id ], fragment );
 				} );
-		}
-		if ( page.title ) {
-			document.title = page.title;
-		}
-	} );
+		} );
+	}
+	if ( page.title ) {
+		document.title = page.title;
+	}
 };
 
 /**
@@ -156,7 +178,7 @@ window.addEventListener( 'popstate', async () => {
 	const pagePath = getPagePath( window.location.href ); // Remove hash.
 	const page = pages.has( pagePath ) && ( await pages.get( pagePath ) );
 	if ( page ) {
-		renderRegions( page );
+		await renderRegions( page );
 		// Update the URL in the state.
 		state.url = window.location.href;
 	} else {
@@ -167,21 +189,14 @@ window.addEventListener( 'popstate', async () => {
 // Initialize the router and cache the initial page using the initial vDOM.
 // Once this code is tested and more mature, the head should be updated for
 // region based navigation as well.
-if ( globalThis.IS_GUTENBERG_PLUGIN ) {
-	if ( navigationMode === 'fullPage' ) {
-		// Cache the scripts. Has to be called before fetching the assets.
-		[].map.call( document.querySelectorAll( 'script[src]' ), ( script ) => {
-			headElements.set( script.getAttribute( 'src' ), {
-				tag: script,
-				text: script.textContent,
-			} );
-		} );
-		await fetchHeadAssets( document, headElements );
-	}
-}
 pages.set(
 	getPagePath( window.location.href ),
-	Promise.resolve( regionsToVdom( document, { vdom: initialVdom } ) )
+	Promise.resolve(
+		regionsToVdom( document, {
+			vdom: initialVdom,
+			baseUrl: window.location.href,
+		} )
+	)
 );
 
 // Check if the link is valid for client-side navigation.
@@ -209,24 +224,41 @@ const isValidEvent = ( event: MouseEvent ) =>
 // Variable to store the current navigation.
 let navigatingTo = '';
 
-export const { state, actions } = store( 'core/router', {
+let hasLoadedNavigationTextsData = false;
+const navigationTexts = {
+	loading: 'Loading page, please wait.',
+	loaded: 'Page Loaded.',
+};
+
+interface Store {
+	state: {
+		url: string;
+		navigation: {
+			isLoading: boolean;
+			hasStarted: boolean;
+			hasFinished: boolean;
+		};
+	};
+	actions: {
+		navigate: ( href: string, options?: NavigateOptions ) => void;
+		prefetch: ( url: string, options?: PrefetchOptions ) => void;
+	};
+}
+
+export const { state, actions } = store< Store >( 'core/router', {
 	state: {
 		url: window.location.href,
 		navigation: {
+			isLoading: false,
 			hasStarted: false,
 			hasFinished: false,
-			texts: {
-				loading: '',
-				loaded: '',
-			},
-			message: '',
 		},
 	},
 	actions: {
 		/**
 		 * Navigates to the specified page.
 		 *
-		 * This function normalizes the passed href, fetchs the page HTML if
+		 * This function normalizes the passed href, fetches the page HTML if
 		 * needed, and updates any interactive regions whose contents have
 		 * changed. It also creates a new entry in the browser session history.
 		 *
@@ -270,12 +302,13 @@ export const { state, actions } = store( 'core/router', {
 					return;
 				}
 
+				navigation.isLoading = true;
 				if ( loadingAnimation ) {
 					navigation.hasStarted = true;
 					navigation.hasFinished = false;
 				}
 				if ( screenReaderAnnouncement ) {
-					navigation.message = navigation.texts.loading;
+					a11ySpeak( 'loading' );
 				}
 			}, 400 );
 
@@ -309,20 +342,14 @@ export const { state, actions } = store( 'core/router', {
 
 				// Update the navigation status once the the new page rendering
 				// has been completed.
+				navigation.isLoading = false;
 				if ( loadingAnimation ) {
 					navigation.hasStarted = false;
 					navigation.hasFinished = true;
 				}
 
 				if ( screenReaderAnnouncement ) {
-					// Announce that the page has been loaded. If the message is the
-					// same, we use a no-break space similar to the @wordpress/a11y
-					// package: https://github.com/WordPress/gutenberg/blob/c395242b8e6ee20f8b06c199e4fc2920d7018af1/packages/a11y/src/filter-message.js#L20-L26
-					navigation.message =
-						navigation.texts.loaded +
-						( navigation.message === navigation.texts.loaded
-							? '\u00A0'
-							: '' );
+					a11ySpeak( 'loaded' );
 				}
 
 				// Scroll to the anchor if exits in the link.
@@ -336,7 +363,7 @@ export const { state, actions } = store( 'core/router', {
 		},
 
 		/**
-		 * Prefetchs the page with the passed URL.
+		 * Prefetches the page with the passed URL.
 		 *
 		 * The function normalizes the URL and stores internally the fetch
 		 * promise, to avoid triggering a second fetch for an ongoing request.
@@ -362,6 +389,56 @@ export const { state, actions } = store( 'core/router', {
 		},
 	},
 } );
+
+/**
+ * Announces a message to screen readers.
+ *
+ * This is a wrapper around the `@wordpress/a11y` package's `speak` function. It handles importing
+ * the package on demand and should be used instead of calling `ally.speak` direacly.
+ *
+ * @param messageKey The message to be announced by assistive technologies.
+ */
+function a11ySpeak( messageKey: keyof typeof navigationTexts ) {
+	if ( ! hasLoadedNavigationTextsData ) {
+		hasLoadedNavigationTextsData = true;
+		const content = document.getElementById(
+			'wp-script-module-data-@wordpress/interactivity-router'
+		)?.textContent;
+		if ( content ) {
+			try {
+				const parsed = JSON.parse( content );
+				if ( typeof parsed?.i18n?.loading === 'string' ) {
+					navigationTexts.loading = parsed.i18n.loading;
+				}
+				if ( typeof parsed?.i18n?.loaded === 'string' ) {
+					navigationTexts.loaded = parsed.i18n.loaded;
+				}
+			} catch {}
+		} else {
+			// Fallback to localized strings from Interactivity API state.
+			// @todo This block is for Core < 6.7.0. Remove when support is dropped.
+
+			// @ts-expect-error
+			if ( state.navigation.texts?.loading ) {
+				// @ts-expect-error
+				navigationTexts.loading = state.navigation.texts.loading;
+			}
+			// @ts-expect-error
+			if ( state.navigation.texts?.loaded ) {
+				// @ts-expect-error
+				navigationTexts.loaded = state.navigation.texts.loaded;
+			}
+		}
+	}
+
+	const message = navigationTexts[ messageKey ];
+
+	import( '@wordpress/a11y' ).then(
+		( { speak } ) => speak( message ),
+		// Ignore failures to load the a11y module.
+		() => {}
+	);
+}
 
 // Add click and prefetch to all links.
 if ( globalThis.IS_GUTENBERG_PLUGIN ) {

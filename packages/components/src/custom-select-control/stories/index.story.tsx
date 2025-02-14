@@ -1,7 +1,7 @@
 /**
  * External dependencies
  */
-import type { StoryFn } from '@storybook/react';
+import type { Meta, StoryFn } from '@storybook/react';
 
 /**
  * WordPress dependencies
@@ -13,32 +13,41 @@ import { useState } from '@wordpress/element';
  */
 import CustomSelectControl from '..';
 
-export default {
-	title: 'Components/CustomSelectControl',
+const meta: Meta< typeof CustomSelectControl > = {
+	title: 'Components/Selection & Input/Common/CustomSelectControl',
 	component: CustomSelectControl,
+	id: 'components-customselectcontrol',
 	argTypes: {
-		__next40pxDefaultSize: { control: { type: 'boolean' } },
-		__experimentalShowSelectedHint: { control: { type: 'boolean' } },
-		size: {
-			options: [ 'small', 'default', '__unstable-large' ],
-			control: {
-				type: 'radio',
-			},
-		},
-		onChange: { control: { type: null } },
-		value: { control: { type: null } },
+		onChange: { control: false },
+		value: { control: false },
 	},
 	parameters: {
 		actions: { argTypesRegex: '^on.*' },
+		controls: { expanded: true },
+		docs: {
+			source: { excludeDecorators: true },
+		},
 	},
+	decorators: [
+		( Story ) => (
+			<div
+				style={ {
+					minHeight: '150px',
+				} }
+			>
+				<Story />
+			</div>
+		),
+	],
 };
+export default meta;
 
 const Template: StoryFn< typeof CustomSelectControl > = ( props ) => {
 	const [ value, setValue ] = useState( props.options[ 0 ] );
 
 	const onChange: React.ComponentProps<
 		typeof CustomSelectControl
-	>[ 'onChange' ] = ( changeObject: { selectedItem: any } ) => {
+	>[ 'onChange' ] = ( changeObject ) => {
 		setValue( changeObject.selectedItem );
 		props.onChange?.( changeObject );
 	};
@@ -52,8 +61,9 @@ const Template: StoryFn< typeof CustomSelectControl > = ( props ) => {
 	);
 };
 
-export const Default: StoryFn = Template.bind( {} );
+export const Default = Template.bind( {} );
 Default.args = {
+	__next40pxDefaultSize: true,
 	label: 'Label',
 	options: [
 		{
@@ -80,7 +90,7 @@ Default.args = {
 	],
 };
 
-export const WithLongLabels: StoryFn = Template.bind( {} );
+export const WithLongLabels = Template.bind( {} );
 WithLongLabels.args = {
 	...Default.args,
 	options: [
@@ -99,29 +109,29 @@ WithLongLabels.args = {
 	],
 };
 
-export const WithHints: StoryFn = Template.bind( {} );
+export const WithHints = Template.bind( {} );
 WithHints.args = {
 	...Default.args,
 	options: [
 		{
 			key: 'thumbnail',
 			name: 'Thumbnail',
-			__experimentalHint: '150x150',
+			hint: '150x150',
 		},
 		{
 			key: 'medium',
 			name: 'Medium',
-			__experimentalHint: '250x250',
+			hint: '250x250',
 		},
 		{
 			key: 'large',
 			name: 'Large',
-			__experimentalHint: '1024x1024',
+			hint: '1024x1024',
 		},
 		{
 			key: 'full',
 			name: 'Full Size',
-			__experimentalHint: '1600x1600',
+			hint: '1600x1600',
 		},
 	],
 };

@@ -14,12 +14,12 @@ const orderOptions = [
 		value: 'date/asc',
 	},
 	{
-		/* translators: label for ordering posts by title in ascending order */
+		/* translators: Label for ordering posts by title in ascending order. */
 		label: __( 'A → Z' ),
 		value: 'title/asc',
 	},
 	{
-		/* translators: label for ordering posts by title in descending order */
+		/* translators: Label for ordering posts by title in descending order. */
 		label: __( 'Z → A' ),
 		value: 'title/desc',
 	},
@@ -28,6 +28,7 @@ function OrderControl( { order, orderBy, onChange } ) {
 	return (
 		<SelectControl
 			__nextHasNoMarginBottom
+			__next40pxDefaultSize
 			label={ __( 'Order by' ) }
 			value={ `${ orderBy }/${ order }` }
 			options={ orderOptions }

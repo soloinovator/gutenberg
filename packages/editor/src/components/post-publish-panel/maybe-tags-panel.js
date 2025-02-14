@@ -28,7 +28,7 @@ const TagsPanel = () => {
 					'Tags help users and search engines navigate your site and find your content. Add a few keywords to describe your post.'
 				) }
 			</p>
-			<FlatTermSelector slug="post_tag" />
+			<FlatTermSelector slug="post_tag" __nextHasNoMarginBottom />
 		</PanelBody>
 	);
 };
@@ -36,7 +36,11 @@ const TagsPanel = () => {
 const MaybeTagsPanel = () => {
 	const { hasTags, isPostTypeSupported } = useSelect( ( select ) => {
 		const postType = select( editorStore ).getCurrentPostType();
-		const tagsTaxonomy = select( coreStore ).getTaxonomy( 'post_tag' );
+		const tagsTaxonomy = select( coreStore ).getEntityRecord(
+			'root',
+			'taxonomy',
+			'post_tag'
+		);
 		const _isPostTypeSupported = tagsTaxonomy?.types?.includes( postType );
 		const areTagsFetched = tagsTaxonomy !== undefined;
 		const tags =

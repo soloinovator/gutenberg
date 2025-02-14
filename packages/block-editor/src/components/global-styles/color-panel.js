@@ -19,8 +19,8 @@ import {
 	Button,
 	privateApis as componentsPrivateApis,
 } from '@wordpress/components';
-import { useCallback } from '@wordpress/element';
-import { __, sprintf } from '@wordpress/i18n';
+import { useCallback, useRef } from '@wordpress/element';
+import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -30,10 +30,11 @@ import { useColorsPerOrigin, useGradientsPerOrigin } from './hooks';
 import { getValueFromVariable, useToolsPanelDropdownMenuProps } from './utils';
 import { setImmutably } from '../../utils/object';
 import { unlock } from '../../lock-unlock';
+import { reset as resetIcon } from '@wordpress/icons';
 
 export function useHasColorPanel( settings ) {
 	const hasTextPanel = useHasTextPanel( settings );
-	const hasBackgroundPanel = useHasBackgroundPanel( settings );
+	const hasBackgroundPanel = useHasBackgroundColorPanel( settings );
 	const hasLinkPanel = useHasLinkPanel( settings );
 	const hasHeadingPanel = useHasHeadingPanel( settings );
 	const hasButtonPanel = useHasButtonPanel( settings );
@@ -97,7 +98,7 @@ export function useHasButtonPanel( settings ) {
 	);
 }
 
-export function useHasBackgroundPanel( settings ) {
+export function useHasBackgroundColorPanel( settings ) {
 	const colors = useColorsPerOrigin( settings );
 	const gradients = useGradientsPerOrigin( settings );
 	return (
@@ -167,10 +168,7 @@ const LabeledColorIndicators = ( { indicators, label } ) => (
 				</Flex>
 			) ) }
 		</ZStack>
-		<FlexItem
-			className="block-editor-panel-color-gradient-settings__color-name"
-			title={ label }
-		>
+		<FlexItem className="block-editor-panel-color-gradient-settings__color-name">
 			{ label }
 		</FlexItem>
 	</HStack>
@@ -211,6 +209,7 @@ function ColorPanelDropdown( {
 } ) {
 	const currentTab = tabs.find( ( tab ) => tab.userValue !== undefined );
 	const { key: firstTabKey, ...firstTab } = tabs[ 0 ] ?? {};
+	const colorGradientDropdownButtonRef = useRef( undefined );
 	return (
 		<ToolsPanelItem
 			className="block-editor-tools-panel-color-gradient-settings__item"
@@ -231,20 +230,35 @@ function ColorPanelDropdown( {
 							{ 'is-open': isOpen }
 						),
 						'aria-expanded': isOpen,
-						'aria-label': sprintf(
-							/* translators: %s is the type of color property, e.g., "background" */
-							__( 'Color %s styles' ),
-							label
-						),
+						ref: colorGradientDropdownButtonRef,
 					};
 
 					return (
-						<Button { ...toggleProps }>
-							<LabeledColorIndicators
-								indicators={ indicators }
-								label={ label }
-							/>
-						</Button>
+						<>
+							<Button { ...toggleProps } __next40pxDefaultSize>
+								<LabeledColorIndicators
+									indicators={ indicators }
+									label={ label }
+								/>
+							</Button>
+							{ hasValue() && (
+								<Button
+									__next40pxDefaultSize
+									label={ __( 'Reset' ) }
+									className="block-editor-panel-color-gradient-settings__reset"
+									size="small"
+									icon={ resetIcon }
+									onClick={ () => {
+										resetValue();
+										if ( isOpen ) {
+											onToggle();
+										}
+										// Return focus to parent button
+										colorGradientDropdownButtonRef.current?.focus();
+									} }
+								/>
+							) }
+						</>
 					);
 				} }
 				renderContent={ () => (
@@ -343,7 +357,7 @@ export default function ColorPanel( {
 	};
 
 	// BackgroundColor
-	const showBackgroundPanel = useHasBackgroundPanel( settings );
+	const showBackgroundPanel = useHasBackgroundColorPanel( settings );
 	const backgroundColor = decodeValue( inheritedValue?.color?.background );
 	const userBackgroundColor = decodeValue( value?.color?.background );
 	const gradient = decodeValue( inheritedValue?.color?.gradient );

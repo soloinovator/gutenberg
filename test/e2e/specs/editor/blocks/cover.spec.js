@@ -34,7 +34,7 @@ test.describe( 'Cover', () => {
 
 		// Locate the Black color swatch.
 		const blackColorSwatch = coverBlock.getByRole( 'option', {
-			name: 'Color: Black',
+			name: 'Black',
 		} );
 		await expect( blackColorSwatch ).toBeVisible();
 
@@ -106,7 +106,7 @@ test.describe( 'Cover', () => {
 		// a functioning block.
 		await coverBlock
 			.getByRole( 'option', {
-				name: 'Color: Black',
+				name: 'Black',
 			} )
 			.click();
 
@@ -129,7 +129,7 @@ test.describe( 'Cover', () => {
 		} );
 		await coverBlock
 			.getByRole( 'option', {
-				name: 'Color: Black',
+				name: 'Black',
 			} )
 			.click();
 
@@ -158,7 +158,7 @@ test.describe( 'Cover', () => {
 
 		// Ensure there the default value for the minimum height of cover is undefined.
 		const defaultHeightValue = await coverBlockEditorSettings
-			.getByLabel( 'Minimum height of cover' )
+			.getByLabel( 'Minimum height' )
 			.inputValue();
 		expect( defaultHeightValue ).toBeFalsy();
 
@@ -177,7 +177,7 @@ test.describe( 'Cover', () => {
 		expect( coverBlockBox.height ).toBeTruthy();
 		expect( coverBlockResizeHandleBox.height ).toBeTruthy();
 
-		// Increse the Cover block height by 100px.
+		// Increase the Cover block height by 100px.
 		await coverBlockResizeHandle.hover();
 		await page.mouse.down();
 
@@ -225,6 +225,77 @@ test.describe( 'Cover', () => {
 
 		await expect( overlay ).toHaveCSS( 'background-color', 'rgb(0, 0, 0)' );
 		await expect( overlay ).toHaveCSS( 'opacity', '0.5' );
+	} );
+
+	test( 'other cover blocks are not over the navigation block when the menu is open', async ( {
+		editor,
+		page,
+	} ) => {
+		// Insert a Cover block
+		await editor.insertBlock( { name: 'core/cover' } );
+		const coverBlock = editor.canvas.getByRole( 'document', {
+			name: 'Block: Cover',
+		} );
+
+		// Choose a color swatch to transform the placeholder block into
+		// a functioning block.
+		await coverBlock
+			.getByRole( 'option', {
+				name: 'Black',
+			} )
+			.click();
+
+		// Insert a Navigation block inside the Cover block
+		await editor.selectBlocks( coverBlock );
+		await coverBlock.getByRole( 'button', { name: 'Add block' } ).click();
+		await page.keyboard.type( 'Navigation' );
+		const blockResults = page.getByRole( 'listbox', {
+			name: 'Blocks',
+		} );
+		const blockResultOptions = blockResults.getByRole( 'option' );
+		await blockResultOptions.nth( 0 ).click();
+
+		// Insert a second Cover block.
+		await editor.insertBlock( { name: 'core/cover' } );
+		const secondCoverBlock = editor.canvas
+			.getByRole( 'document', {
+				name: 'Block: Cover',
+			} )
+			.last();
+
+		// Choose a color swatch to transform the placeholder block into
+		// a functioning block.
+		await secondCoverBlock
+			.getByRole( 'option', {
+				name: 'Black',
+			} )
+			.click();
+
+		// Set the viewport to a small screen and open menu.
+		await page.setViewportSize( { width: 375, height: 1000 } );
+		const navigationBlock = editor.canvas.getByRole( 'document', {
+			name: 'Block: Navigation',
+		} );
+		await editor.selectBlocks( navigationBlock );
+		await editor.canvas
+			.getByRole( 'button', { name: 'Open menu' } )
+			.click();
+
+		// Check if inner container of the second cover is clickable.
+		const secondInnerContainer = secondCoverBlock.locator(
+			'.wp-block-cover__inner-container'
+		);
+		let isClickable;
+		try {
+			isClickable = await secondInnerContainer.click( {
+				trial: true,
+				timeout: 1000, // This test will always take 1 second to run.
+			} );
+		} catch ( error ) {
+			isClickable = false;
+		}
+
+		expect( isClickable ).toBe( false );
 	} );
 } );
 

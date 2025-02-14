@@ -10,6 +10,7 @@ import reducer from './reducer';
 import * as selectors from './selectors';
 import * as privateSelectors from './private-selectors';
 import * as actions from './actions';
+import * as privateActions from './private-actions';
 import * as resolvers from './resolvers';
 import createLocksActions from './locks/actions';
 import {
@@ -18,7 +19,8 @@ import {
 	getMethodName,
 } from './entities';
 import { STORE_NAME } from './name';
-import { unlock } from './private-apis';
+import { unlock } from './lock-unlock';
+import { dynamicActions, dynamicSelectors } from './dynamic-entities';
 
 // The entity selectors/resolvers and actions are shortcuts to their generic equivalents
 // (getEntityRecord, getEntityRecords, updateEntityRecord, updateEntityRecords)
@@ -67,8 +69,17 @@ const entityActions = entitiesConfig.reduce( ( result, entity ) => {
 
 const storeConfig = () => ( {
 	reducer,
-	actions: { ...actions, ...entityActions, ...createLocksActions() },
-	selectors: { ...selectors, ...entitySelectors },
+	actions: {
+		...dynamicActions,
+		...actions,
+		...entityActions,
+		...createLocksActions(),
+	},
+	selectors: {
+		...dynamicSelectors,
+		...selectors,
+		...entitySelectors,
+	},
 	resolvers: { ...resolvers, ...entityResolvers },
 } );
 
@@ -79,6 +90,7 @@ const storeConfig = () => ( {
  */
 export const store = createReduxStore( STORE_NAME, storeConfig() );
 unlock( store ).registerPrivateSelectors( privateSelectors );
+unlock( store ).registerPrivateActions( privateActions );
 register( store ); // Register store after unlocking private selectors to allow resolvers to use them.
 
 export { default as EntityProvider } from './entity-provider';
@@ -86,3 +98,4 @@ export * from './entity-provider';
 export * from './entity-types';
 export * from './fetch';
 export * from './hooks';
+export * from './private-apis';

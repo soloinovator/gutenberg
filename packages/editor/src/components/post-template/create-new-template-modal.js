@@ -118,6 +118,7 @@ export default function CreateNewTemplateModal( { onClose } ) {
 			>
 				<VStack spacing="3">
 					<TextControl
+						__next40pxDefaultSize
 						__nextHasNoMarginBottom
 						label={ __( 'Name' ) }
 						value={ title }
@@ -125,15 +126,21 @@ export default function CreateNewTemplateModal( { onClose } ) {
 						placeholder={ DEFAULT_TITLE }
 						disabled={ isBusy }
 						help={ __(
+							// eslint-disable-next-line no-restricted-syntax -- 'sidebar' is a common web design term for layouts
 							'Describe the template, e.g. "Post with sidebar". A custom template can be manually applied to any post or page.'
 						) }
 					/>
 					<HStack justify="right">
-						<Button variant="tertiary" onClick={ cancel }>
+						<Button
+							__next40pxDefaultSize
+							variant="tertiary"
+							onClick={ cancel }
+						>
 							{ __( 'Cancel' ) }
 						</Button>
 
 						<Button
+							__next40pxDefaultSize
 							variant="primary"
 							type="submit"
 							isBusy={ isBusy }

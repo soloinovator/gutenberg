@@ -245,7 +245,7 @@ test.describe( 'Block Style Variations', () => {
 
 		// Click on previous revision.
 		await page
-			.getByRole( 'button', {
+			.getByRole( 'option', {
 				name: /^Changes saved by /,
 			} )
 			.nth( 1 )
@@ -302,10 +302,10 @@ class SiteEditorBlockStyleVariations {
 
 async function draftNewPage( page ) {
 	await page.getByRole( 'button', { name: 'Pages' } ).click();
-	await page.getByRole( 'button', { name: 'Add new page' } ).click();
+	await page.getByRole( 'button', { name: 'Add page' } ).click();
 	await page
-		.locator( 'role=dialog[name="Draft a new page"i]' )
-		.locator( 'role=textbox[name="Page title"i]' )
+		.locator( 'role=dialog[name="Draft new: page"i]' )
+		.locator( 'role=textbox[name="title"i]' )
 		.fill( TEST_PAGE_TITLE );
 	await page.keyboard.press( 'Enter' );
 	await expect(
@@ -317,14 +317,9 @@ async function draftNewPage( page ) {
 
 // Create a Group block with 2 nested Group blocks.
 async function addPageContent( editor, page ) {
-	const inserterButton = page.locator(
-		'role=button[name="Toggle block inserter"i]'
-	);
+	const inserterButton = page.locator( 'role=tab[name="Blocks"i]' );
 	await inserterButton.click();
-	await page.type(
-		'role=searchbox[name="Search for blocks and patterns"i]',
-		'Group'
-	);
+	await page.type( 'role=searchbox[name="Search"i]', 'Group' );
 	await page.click(
 		'role=listbox[name="Blocks"i] >> role=option[name="Group"i]'
 	);

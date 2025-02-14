@@ -12,17 +12,14 @@ import {
 	useDispatch,
 	useRegistry,
 } from '@wordpress/data';
-import {
-	useViewportMatch,
-	useMergeRefs,
-	useDebounce,
-} from '@wordpress/compose';
+import { useMergeRefs, useDebounce } from '@wordpress/compose';
 import {
 	createContext,
 	useMemo,
 	useCallback,
 	useEffect,
 } from '@wordpress/element';
+import { getDefaultBlockName } from '@wordpress/blocks';
 
 /**
  * Internal dependencies
@@ -39,33 +36,24 @@ import {
 	DEFAULT_BLOCK_EDIT_CONTEXT,
 } from '../block-edit/context';
 import { useTypingObserver } from '../observe-typing';
+import { ZoomOutSeparator } from './zoom-out-separator';
 import { unlock } from '../../lock-unlock';
 
 export const IntersectionObserver = createContext();
 const pendingBlockVisibilityUpdatesPerRegistry = new WeakMap();
 
 function Root( { className, ...settings } ) {
-	const isLargeViewport = useViewportMatch( 'medium' );
-	const {
-		isOutlineMode,
-		isFocusMode,
-		editorMode,
-		temporarilyEditingAsBlocks,
-	} = useSelect( ( select ) => {
-		const {
-			getSettings,
-			__unstableGetEditorMode,
-			getTemporarilyEditingAsBlocks,
-			isTyping,
-		} = unlock( select( blockEditorStore ) );
-		const { outlineMode, focusMode } = getSettings();
-		return {
-			isOutlineMode: outlineMode && ! isTyping(),
-			isFocusMode: focusMode,
-			editorMode: __unstableGetEditorMode(),
-			temporarilyEditingAsBlocks: getTemporarilyEditingAsBlocks(),
-		};
-	}, [] );
+	const { isOutlineMode, isFocusMode, temporarilyEditingAsBlocks } =
+		useSelect( ( select ) => {
+			const { getSettings, getTemporarilyEditingAsBlocks, isTyping } =
+				unlock( select( blockEditorStore ) );
+			const { outlineMode, focusMode } = getSettings();
+			return {
+				isOutlineMode: outlineMode && ! isTyping(),
+				isFocusMode: focusMode,
+				temporarilyEditingAsBlocks: getTemporarilyEditingAsBlocks(),
+			};
+		}, [] );
 	const registry = useRegistry();
 	const { setBlockVisibility } = useDispatch( blockEditorStore );
 
@@ -113,8 +101,7 @@ function Root( { className, ...settings } ) {
 			] ),
 			className: clsx( 'is-root-container', className, {
 				'is-outline-mode': isOutlineMode,
-				'is-focus-mode': isFocusMode && isLargeViewport,
-				'is-navigate-mode': editorMode === 'navigation',
+				'is-focus-mode': isFocusMode,
 			} ),
 		},
 		settings
@@ -174,49 +161,70 @@ function Items( {
 	// function on every render.
 	const hasAppender = CustomAppender !== false;
 	const hasCustomAppender = !! CustomAppender;
-	const { order, selectedBlocks, visibleBlocks, shouldRenderAppender } =
-		useSelect(
-			( select ) => {
-				const {
-					getSettings,
-					getBlockOrder,
-					getSelectedBlockClientId,
-					getSelectedBlockClientIds,
-					__unstableGetVisibleBlocks,
-					getTemplateLock,
-					getBlockEditingMode,
-					__unstableGetEditorMode,
-				} = select( blockEditorStore );
+	const {
+		order,
+		isZoomOut,
+		selectedBlocks,
+		visibleBlocks,
+		shouldRenderAppender,
+	} = useSelect(
+		( select ) => {
+			const {
+				getSettings,
+				getBlockOrder,
+				getSelectedBlockClientIds,
+				__unstableGetVisibleBlocks,
+				getTemplateLock,
+				getBlockEditingMode,
+				isSectionBlock,
+				isZoomOut: _isZoomOut,
+				canInsertBlockType,
+			} = unlock( select( blockEditorStore ) );
 
-				const _order = getBlockOrder( rootClientId );
+			const _order = getBlockOrder( rootClientId );
 
-				if ( getSettings().__unstableIsPreviewMode ) {
-					return {
-						order: _order,
-						selectedBlocks: EMPTY_ARRAY,
-						visibleBlocks: EMPTY_SET,
-					};
-				}
-
-				const selectedBlockClientId = getSelectedBlockClientId();
+			if ( getSettings().isPreviewMode ) {
 				return {
 					order: _order,
-					selectedBlocks: getSelectedBlockClientIds(),
-					visibleBlocks: __unstableGetVisibleBlocks(),
-					shouldRenderAppender:
-						hasAppender &&
-						__unstableGetEditorMode() !== 'zoom-out' &&
-						( hasCustomAppender
-							? ! getTemplateLock( rootClientId ) &&
-							  getBlockEditingMode( rootClientId ) !== 'disabled'
-							: rootClientId === selectedBlockClientId ||
-							  ( ! rootClientId &&
-									! selectedBlockClientId &&
-									! _order.length ) ),
+					selectedBlocks: EMPTY_ARRAY,
+					visibleBlocks: EMPTY_SET,
 				};
-			},
-			[ rootClientId, hasAppender, hasCustomAppender ]
-		);
+			}
+
+			const selectedBlockClientIds = getSelectedBlockClientIds();
+			const selectedBlockClientId = selectedBlockClientIds[ 0 ];
+			const showRootAppender =
+				! rootClientId &&
+				! selectedBlockClientId &&
+				( ! _order.length ||
+					! canInsertBlockType(
+						getDefaultBlockName(),
+						rootClientId
+					) );
+			const hasSelectedRoot = !! (
+				rootClientId &&
+				selectedBlockClientId &&
+				rootClientId === selectedBlockClientId
+			);
+
+			return {
+				order: _order,
+				selectedBlocks: selectedBlockClientIds,
+				visibleBlocks: __unstableGetVisibleBlocks(),
+				isZoomOut: _isZoomOut(),
+				shouldRenderAppender:
+					! isSectionBlock( rootClientId ) &&
+					getBlockEditingMode( rootClientId ) !== 'disabled' &&
+					! getTemplateLock( rootClientId ) &&
+					hasAppender &&
+					! _isZoomOut() &&
+					( hasCustomAppender ||
+						hasSelectedRoot ||
+						showRootAppender ),
+			};
+		},
+		[ rootClientId, hasAppender, hasCustomAppender ]
+	);
 
 	return (
 		<LayoutProvider value={ layout }>
@@ -230,10 +238,24 @@ function Items( {
 						! selectedBlocks.includes( clientId )
 					}
 				>
+					{ isZoomOut && (
+						<ZoomOutSeparator
+							clientId={ clientId }
+							rootClientId={ rootClientId }
+							position="top"
+						/>
+					) }
 					<BlockListBlock
 						rootClientId={ rootClientId }
 						clientId={ clientId }
 					/>
+					{ isZoomOut && (
+						<ZoomOutSeparator
+							clientId={ clientId }
+							rootClientId={ rootClientId }
+							position="bottom"
+						/>
+					) }
 				</AsyncModeProvider>
 			) ) }
 			{ order.length < 1 && placeholder }

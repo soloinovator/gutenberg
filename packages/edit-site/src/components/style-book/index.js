@@ -8,33 +8,53 @@ import clsx from 'clsx';
  */
 import {
 	Disabled,
+	Composite,
 	privateApis as componentsPrivateApis,
 } from '@wordpress/components';
-import { __, sprintf } from '@wordpress/i18n';
-import {
-	getCategories,
-	getBlockTypes,
-	getBlockFromExample,
-	createBlock,
-} from '@wordpress/blocks';
+import { __, _x, sprintf } from '@wordpress/i18n';
 import {
 	BlockList,
 	privateApis as blockEditorPrivateApis,
 	store as blockEditorStore,
+	useSettings,
+	BlockEditorProvider,
 	__unstableEditorStyles as EditorStyles,
 	__unstableIframe as Iframe,
+	__experimentalUseMultipleOriginColorsAndGradients as useMultipleOriginColorsAndGradients,
 } from '@wordpress/block-editor';
 import { privateApis as editorPrivateApis } from '@wordpress/editor';
-import { useSelect } from '@wordpress/data';
-import { useResizeObserver } from '@wordpress/compose';
-import { useMemo, useState, memo, useContext } from '@wordpress/element';
+import { useSelect, dispatch } from '@wordpress/data';
+import {
+	useMemo,
+	useState,
+	memo,
+	useContext,
+	useRef,
+	useLayoutEffect,
+	useEffect,
+} from '@wordpress/element';
 import { ENTER, SPACE } from '@wordpress/keycodes';
+import { uploadMedia } from '@wordpress/media-utils';
+import { store as coreStore } from '@wordpress/core-data';
 
 /**
  * Internal dependencies
  */
 import { unlock } from '../../lock-unlock';
 import EditorCanvasContainer from '../editor-canvas-container';
+import { STYLE_BOOK_IFRAME_STYLES } from './constants';
+import {
+	getExamplesByCategory,
+	getTopLevelStyleBookCategories,
+} from './categories';
+import { getExamples } from './examples';
+import { store as siteEditorStore } from '../../store';
+import { useSection } from '../sidebar-global-styles-wrapper';
+import { GlobalStylesRenderer } from '../global-styles-renderer';
+import {
+	STYLE_BOOK_COLOR_GROUPS,
+	STYLE_BOOK_PREVIEW_CATEGORIES,
+} from '../style-book/constants';
 
 const {
 	ExperimentalBlockEditorProvider,
@@ -44,137 +64,155 @@ const {
 } = unlock( blockEditorPrivateApis );
 const { mergeBaseAndUserConfigs } = unlock( editorPrivateApis );
 
-const {
-	CompositeV2: Composite,
-	CompositeItemV2: CompositeItem,
-	useCompositeStoreV2: useCompositeStore,
-	Tabs,
-} = unlock( componentsPrivateApis );
-
-// The content area of the Style Book is rendered within an iframe so that global styles
-// are applied to elements within the entire content area. To support elements that are
-// not part of the block previews, such as headings and layout for the block previews,
-// additional CSS rules need to be passed into the iframe. These are hard-coded below.
-// Note that button styles are unset, and then focus rules from the `Button` component are
-// applied to the `button` element, targeted via `.edit-site-style-book__example`.
-// This is to ensure that browser default styles for buttons are not applied to the previews.
-const STYLE_BOOK_IFRAME_STYLES = `
-	.edit-site-style-book__examples {
-		max-width: 900px;
-		margin: 0 auto;
-	}
-
-	.edit-site-style-book__example {
-		border-radius: 2px;
-		cursor: pointer;
-		display: flex;
-		flex-direction: column;
-		gap: 40px;
-		margin-bottom: 40px;
-		padding: 16px;
-		width: 100%;
-		box-sizing: border-box;
-		scroll-margin-top: 32px;
-		scroll-margin-bottom: 32px;
-	}
-
-	.edit-site-style-book__example.is-selected {
-		box-shadow: 0 0 0 1px var(--wp-components-color-accent, var(--wp-admin-theme-color, #007cba));
-	}
-
-	.edit-site-style-book__example:focus:not(:disabled) {
-		box-shadow: 0 0 0 var(--wp-admin-border-width-focus) var(--wp-components-color-accent, var(--wp-admin-theme-color, #007cba));
-		outline: 3px solid transparent;
-	}
-
-	.edit-site-style-book__examples.is-wide .edit-site-style-book__example {
-		flex-direction: row;
-	}
-
-	.edit-site-style-book__example-title {
-		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-		font-size: 11px;
-		font-weight: 500;
-		line-height: normal;
-		margin: 0;
-		text-align: left;
-		text-transform: uppercase;
-	}
-
-	.edit-site-style-book__examples.is-wide .edit-site-style-book__example-title {
-		text-align: right;
-		width: 120px;
-	}
-
-	.edit-site-style-book__example-preview {
-		width: 100%;
-	}
-
-	.edit-site-style-book__example-preview .block-editor-block-list__insertion-point,
-	.edit-site-style-book__example-preview .block-list-appender {
-		display: none;
-	}
-
-	.edit-site-style-book__example-preview .is-root-container > .wp-block:first-child {
-		margin-top: 0;
-	}
-	.edit-site-style-book__example-preview .is-root-container > .wp-block:last-child {
-		margin-bottom: 0;
-	}
-`;
+const { Tabs } = unlock( componentsPrivateApis );
 
 function isObjectEmpty( object ) {
 	return ! object || Object.keys( object ).length === 0;
 }
 
-function getExamples() {
-	// Use our own example for the Heading block so that we can show multiple
-	// heading levels.
-	const headingsExample = {
-		name: 'core/heading',
-		title: __( 'Headings' ),
-		category: 'text',
-		blocks: [
-			createBlock( 'core/heading', {
-				content: __( 'Code Is Poetry' ),
-				level: 1,
-			} ),
-			createBlock( 'core/heading', {
-				content: __( 'Code Is Poetry' ),
-				level: 2,
-			} ),
-			createBlock( 'core/heading', {
-				content: __( 'Code Is Poetry' ),
-				level: 3,
-			} ),
-			createBlock( 'core/heading', {
-				content: __( 'Code Is Poetry' ),
-				level: 4,
-			} ),
-			createBlock( 'core/heading', {
-				content: __( 'Code Is Poetry' ),
-				level: 5,
-			} ),
-		],
-	};
+/**
+ * Scrolls to a section within an iframe.
+ *
+ * @param {string}            anchorId The id of the element to scroll to.
+ * @param {HTMLIFrameElement} iframe   The target iframe.
+ */
+const scrollToSection = ( anchorId, iframe ) => {
+	if ( ! anchorId || ! iframe || ! iframe?.contentDocument ) {
+		return;
+	}
 
-	const otherExamples = getBlockTypes()
-		.filter( ( blockType ) => {
-			const { name, example, supports } = blockType;
-			return (
-				name !== 'core/heading' &&
-				!! example &&
-				supports.inserter !== false
-			);
-		} )
-		.map( ( blockType ) => ( {
-			name: blockType.name,
-			title: blockType.title,
-			category: blockType.category,
-			blocks: getBlockFromExample( blockType.name, blockType.example ),
-		} ) );
+	const element =
+		anchorId === 'top'
+			? iframe.contentDocument.body
+			: iframe.contentDocument.getElementById( anchorId );
+	if ( element ) {
+		element.scrollIntoView( {
+			behavior: 'smooth',
+		} );
+	}
+};
 
-	return [ headingsExample, ...otherExamples ];
+/**
+ * Parses a Block Editor navigation path to build a style book navigation path.
+ * The object can be extended to include a category, representing a style book tab/section.
+ *
+ * @param {string} path An internal Block Editor navigation path.
+ * @return {null|{block: string}} An object containing the example to navigate to.
+ */
+const getStyleBookNavigationFromPath = ( path ) => {
+	if ( path && typeof path === 'string' ) {
+		if (
+			path === '/' ||
+			path.startsWith( '/typography' ) ||
+			path.startsWith( '/colors' ) ||
+			path.startsWith( '/blocks' )
+		) {
+			return {
+				top: true,
+			};
+		}
+	}
+	return null;
+};
+
+/**
+ * Retrieves colors, gradients, and duotone filters from Global Styles.
+ * The inclusion of default (Core) palettes is controlled by the relevant
+ * theme.json property e.g. defaultPalette, defaultGradients, defaultDuotone.
+ *
+ * @return {Object} Object containing properties for each type of palette.
+ */
+function useMultiOriginPalettes() {
+	const { colors, gradients } = useMultipleOriginColorsAndGradients();
+
+	// Add duotone filters to the palettes data.
+	const [
+		shouldDisplayDefaultDuotones,
+		customDuotones,
+		themeDuotones,
+		defaultDuotones,
+	] = useSettings(
+		'color.defaultDuotone',
+		'color.duotone.custom',
+		'color.duotone.theme',
+		'color.duotone.default'
+	);
+
+	const palettes = useMemo( () => {
+		const result = { colors, gradients, duotones: [] };
+
+		if ( themeDuotones && themeDuotones.length ) {
+			result.duotones.push( {
+				name: _x(
+					'Theme',
+					'Indicates these duotone filters come from the theme.'
+				),
+				slug: 'theme',
+				duotones: themeDuotones,
+			} );
+		}
+
+		if (
+			shouldDisplayDefaultDuotones &&
+			defaultDuotones &&
+			defaultDuotones.length
+		) {
+			result.duotones.push( {
+				name: _x(
+					'Default',
+					'Indicates these duotone filters come from WordPress.'
+				),
+				slug: 'default',
+				duotones: defaultDuotones,
+			} );
+		}
+		if ( customDuotones && customDuotones.length ) {
+			result.duotones.push( {
+				name: _x(
+					'Custom',
+					'Indicates these doutone filters are created by the user.'
+				),
+				slug: 'custom',
+				duotones: customDuotones,
+			} );
+		}
+
+		return result;
+	}, [
+		colors,
+		gradients,
+		customDuotones,
+		themeDuotones,
+		defaultDuotones,
+		shouldDisplayDefaultDuotones,
+	] );
+
+	return palettes;
+}
+
+/**
+ * Get deduped examples for single page stylebook.
+ * @param {Array} examples Array of examples.
+ * @return {Array} Deduped examples.
+ */
+export function getExamplesForSinglePageUse( examples ) {
+	const examplesForSinglePageUse = [];
+	const overviewCategoryExamples = getExamplesByCategory(
+		{ slug: 'overview' },
+		examples
+	);
+	examplesForSinglePageUse.push( ...overviewCategoryExamples.examples );
+	const otherExamples = examples.filter( ( example ) => {
+		return (
+			example.category !== 'overview' &&
+			! overviewCategoryExamples.examples.find(
+				( overviewExample ) => overviewExample.name === example.name
+			)
+		);
+	} );
+	examplesForSinglePageUse.push( ...otherExamples );
+
+	return examplesForSinglePageUse;
 }
 
 function StyleBook( {
@@ -186,27 +224,26 @@ function StyleBook( {
 	onClose,
 	showTabs = true,
 	userConfig = {},
+	path = '',
 } ) {
-	const [ resizeObserver, sizes ] = useResizeObserver();
 	const [ textColor ] = useGlobalStyle( 'color.text' );
 	const [ backgroundColor ] = useGlobalStyle( 'color.background' );
-	const [ examples ] = useState( getExamples );
+	const colors = useMultiOriginPalettes();
+	const examples = useMemo( () => getExamples( colors ), [ colors ] );
 	const tabs = useMemo(
 		() =>
-			getCategories()
-				.filter( ( category ) =>
-					examples.some(
-						( example ) => example.category === category.slug
-					)
+			getTopLevelStyleBookCategories().filter( ( category ) =>
+				examples.some(
+					( example ) => example.category === category.slug
 				)
-				.map( ( category ) => ( {
-					name: category.slug,
-					title: category.title,
-					icon: category.icon,
-				} ) ),
+			),
 		[ examples ]
 	);
+
+	const examplesForSinglePageUse = getExamplesForSinglePageUse( examples );
+
 	const { base: baseConfig } = useContext( GlobalStylesContext );
+	const goTo = getStyleBookNavigationFromPath( path );
 
 	const mergedConfig = useMemo( () => {
 		if ( ! isObjectEmpty( userConfig ) && ! isObjectEmpty( baseConfig ) ) {
@@ -221,18 +258,19 @@ function StyleBook( {
 		( select ) => select( blockEditorStore ).getSettings(),
 		[]
 	);
-
-	const settings = useMemo(
-		() => ( { ...originalSettings, __unstableIsPreviewMode: true } ),
-		[ originalSettings ]
-	);
-
 	const [ globalStyles ] = useGlobalStylesOutputWithConfig( mergedConfig );
 
-	settings.styles =
-		! isObjectEmpty( globalStyles ) && ! isObjectEmpty( userConfig )
-			? globalStyles
-			: settings.styles;
+	const settings = useMemo(
+		() => ( {
+			...originalSettings,
+			styles:
+				! isObjectEmpty( globalStyles ) && ! isObjectEmpty( userConfig )
+					? globalStyles
+					: originalSettings.styles,
+			isPreviewMode: true,
+		} ),
+		[ globalStyles, originalSettings, userConfig ]
+	);
 
 	return (
 		<EditorCanvasContainer
@@ -242,7 +280,6 @@ function StyleBook( {
 		>
 			<div
 				className={ clsx( 'edit-site-style-book', {
-					'is-wide': sizes.width > 600,
 					'is-button': !! onClick,
 				} ) }
 				style={ {
@@ -250,47 +287,61 @@ function StyleBook( {
 					background: backgroundColor,
 				} }
 			>
-				{ resizeObserver }
 				{ showTabs ? (
-					<div className="edit-site-style-book__tabs">
-						<Tabs>
+					<Tabs>
+						<div className="edit-site-style-book__tablist-container">
 							<Tabs.TabList>
 								{ tabs.map( ( tab ) => (
 									<Tabs.Tab
-										tabId={ tab.name }
-										key={ tab.name }
+										tabId={ tab.slug }
+										key={ tab.slug }
 									>
 										{ tab.title }
 									</Tabs.Tab>
 								) ) }
 							</Tabs.TabList>
-							{ tabs.map( ( tab ) => (
+						</div>
+						{ tabs.map( ( tab ) => {
+							const categoryDefinition = tab.slug
+								? getTopLevelStyleBookCategories().find(
+										( _category ) =>
+											_category.slug === tab.slug
+								  )
+								: null;
+							const filteredExamples = categoryDefinition
+								? getExamplesByCategory(
+										categoryDefinition,
+										examples
+								  )
+								: { examples };
+							return (
 								<Tabs.TabPanel
-									key={ tab.name }
-									tabId={ tab.name }
+									key={ tab.slug }
+									tabId={ tab.slug }
 									focusable={ false }
+									className="edit-site-style-book__tabpanel"
 								>
 									<StyleBookBody
-										category={ tab.name }
-										examples={ examples }
+										category={ tab.slug }
+										examples={ filteredExamples }
 										isSelected={ isSelected }
 										onSelect={ onSelect }
 										settings={ settings }
-										sizes={ sizes }
 										title={ tab.title }
+										goTo={ goTo }
 									/>
 								</Tabs.TabPanel>
-							) ) }
-						</Tabs>
-					</div>
+							);
+						} ) }
+					</Tabs>
 				) : (
 					<StyleBookBody
-						examples={ examples }
+						examples={ { examples: examplesForSinglePageUse } }
 						isSelected={ isSelected }
 						onClick={ onClick }
 						onSelect={ onSelect }
 						settings={ settings }
-						sizes={ sizes }
+						goTo={ goTo }
 					/>
 				) }
 			</div>
@@ -298,18 +349,165 @@ function StyleBook( {
 	);
 }
 
-const StyleBookBody = ( {
-	category,
+/**
+ * Style Book Preview component renders the stylebook without the Editor dependency.
+ *
+ * @param {Object}  props            Component props.
+ * @param {Object}  props.userConfig User configuration.
+ * @param {boolean} props.isStatic   Whether the stylebook is static or clickable.
+ * @return {Object} Style Book Preview component.
+ */
+export const StyleBookPreview = ( { userConfig = {}, isStatic = false } ) => {
+	const siteEditorSettings = useSelect(
+		( select ) => select( siteEditorStore ).getSettings(),
+		[]
+	);
+
+	const canUserUploadMedia = useSelect(
+		( select ) =>
+			select( coreStore ).canUser( 'create', {
+				kind: 'root',
+				name: 'media',
+			} ),
+		[]
+	);
+
+	// Update block editor settings because useMultipleOriginColorsAndGradients fetch colours from there.
+	useEffect( () => {
+		dispatch( blockEditorStore ).updateSettings( {
+			...siteEditorSettings,
+			mediaUpload: canUserUploadMedia ? uploadMedia : undefined,
+		} );
+	}, [ siteEditorSettings, canUserUploadMedia ] );
+
+	const [ section, onChangeSection ] = useSection();
+
+	const isSelected = ( blockName ) => {
+		// Match '/blocks/core%2Fbutton' and
+		// '/blocks/core%2Fbutton/typography', but not
+		// '/blocks/core%2Fbuttons'.
+		return (
+			section === `/blocks/${ encodeURIComponent( blockName ) }` ||
+			section.startsWith(
+				`/blocks/${ encodeURIComponent( blockName ) }/`
+			)
+		);
+	};
+
+	const onSelect = ( blockName ) => {
+		if (
+			STYLE_BOOK_COLOR_GROUPS.find(
+				( group ) => group.slug === blockName
+			)
+		) {
+			// Go to color palettes Global Styles.
+			onChangeSection( '/colors/palette' );
+			return;
+		}
+		if ( blockName === 'typography' ) {
+			// Go to typography Global Styles.
+			onChangeSection( '/typography' );
+			return;
+		}
+
+		// Now go to the selected block.
+		onChangeSection( `/blocks/${ encodeURIComponent( blockName ) }` );
+	};
+
+	const colors = useMultiOriginPalettes();
+	const examples = getExamples( colors );
+	const examplesForSinglePageUse = getExamplesForSinglePageUse( examples );
+
+	let previewCategory = null;
+	if ( section.includes( '/colors' ) ) {
+		previewCategory = 'colors';
+	} else if ( section.includes( '/typography' ) ) {
+		previewCategory = 'text';
+	} else if ( section.includes( '/blocks' ) ) {
+		previewCategory = 'blocks';
+		const blockName =
+			decodeURIComponent( section ).split( '/blocks/' )[ 1 ];
+		if (
+			blockName &&
+			examples.find( ( example ) => example.name === blockName )
+		) {
+			previewCategory = blockName;
+		}
+	} else if ( ! isStatic ) {
+		previewCategory = 'overview';
+	}
+	const categoryDefinition = STYLE_BOOK_PREVIEW_CATEGORIES.find(
+		( category ) => category.slug === previewCategory
+	);
+
+	// If there's no category definition there may be a single block.
+	const filteredExamples = categoryDefinition
+		? getExamplesByCategory( categoryDefinition, examples )
+		: {
+				examples: [
+					examples.find(
+						( example ) => example.name === previewCategory
+					),
+				],
+		  };
+
+	// If there's no preview category, show all examples.
+	const displayedExamples = previewCategory
+		? filteredExamples
+		: { examples: examplesForSinglePageUse };
+
+	const { base: baseConfig } = useContext( GlobalStylesContext );
+	const goTo = getStyleBookNavigationFromPath( section );
+
+	const mergedConfig = useMemo( () => {
+		if ( ! isObjectEmpty( userConfig ) && ! isObjectEmpty( baseConfig ) ) {
+			return mergeBaseAndUserConfigs( baseConfig, userConfig );
+		}
+		return {};
+	}, [ baseConfig, userConfig ] );
+
+	const [ globalStyles ] = useGlobalStylesOutputWithConfig( mergedConfig );
+
+	const settings = useMemo(
+		() => ( {
+			...siteEditorSettings,
+			styles:
+				! isObjectEmpty( globalStyles ) && ! isObjectEmpty( userConfig )
+					? globalStyles
+					: siteEditorSettings.styles,
+			isPreviewMode: true,
+		} ),
+		[ globalStyles, siteEditorSettings, userConfig ]
+	);
+
+	return (
+		<div className="edit-site-style-book">
+			<BlockEditorProvider settings={ settings }>
+				<GlobalStylesRenderer disableRootPadding />
+				<StyleBookBody
+					examples={ displayedExamples }
+					settings={ settings }
+					goTo={ goTo }
+					isSelected={ ! isStatic ? isSelected : null }
+					onSelect={ ! isStatic ? onSelect : null }
+				/>
+			</BlockEditorProvider>
+		</div>
+	);
+};
+
+export const StyleBookBody = ( {
 	examples,
 	isSelected,
 	onClick,
 	onSelect,
 	settings,
-	sizes,
 	title,
+	goTo,
 } ) => {
 	const [ isFocused, setIsFocused ] = useState( false );
-
+	const [ hasIframeLoaded, setHasIframeLoaded ] = useState( false );
+	const iframeRef = useRef( null );
 	// The presence of an `onClick` prop indicates that the Style Book is being used as a button.
 	// In this case, add additional props to the iframe to make it behave like a button.
 	const buttonModeProps = {
@@ -338,12 +536,19 @@ const StyleBookBody = ( {
 		readonly: true,
 	};
 
-	const buttonModeStyles = onClick
-		? 'body { cursor: pointer; } body * { pointer-events: none; }'
-		: '';
+	const handleLoad = () => setHasIframeLoaded( true );
+	useLayoutEffect( () => {
+		if ( hasIframeLoaded && iframeRef?.current ) {
+			if ( goTo?.top ) {
+				scrollToSection( 'top', iframeRef?.current );
+			}
+		}
+	}, [ iframeRef?.current, goTo, scrollToSection, hasIframeLoaded ] );
 
 	return (
 		<Iframe
+			onLoad={ handleLoad }
+			ref={ iframeRef }
 			className={ clsx( 'edit-site-style-book__iframe', {
 				'is-focused': isFocused && !! onClick,
 				'is-button': !! onClick,
@@ -354,21 +559,13 @@ const StyleBookBody = ( {
 		>
 			<EditorStyles styles={ settings.styles } />
 			<style>
-				{
-					// Forming a "block formatting context" to prevent margin collapsing.
-					// @see https://developer.mozilla.org/en-US/docs/Web/Guide/CSS/Block_formatting_context
-					`.is-root-container { display: flow-root; }
-						body { position: relative; padding: 32px !important; }` +
-						STYLE_BOOK_IFRAME_STYLES +
-						buttonModeStyles
-				}
+				{ STYLE_BOOK_IFRAME_STYLES }
+				{ !! onClick &&
+					'body { cursor: pointer; } body * { pointer-events: none; }' }
 			</style>
 			<Examples
-				className={ clsx( 'edit-site-style-book__examples', {
-					'is-wide': sizes.width > 600,
-				} ) }
-				examples={ examples }
-				category={ category }
+				className="edit-site-style-book__examples"
+				filteredExamples={ examples }
 				label={
 					title
 						? sprintf(
@@ -380,45 +577,80 @@ const StyleBookBody = ( {
 				}
 				isSelected={ isSelected }
 				onSelect={ onSelect }
-				key={ category }
+				key={ title }
 			/>
 		</Iframe>
 	);
 };
 
 const Examples = memo(
-	( { className, examples, category, label, isSelected, onSelect } ) => {
-		const compositeStore = useCompositeStore( { orientation: 'vertical' } );
-
+	( { className, filteredExamples, label, isSelected, onSelect } ) => {
 		return (
 			<Composite
-				store={ compositeStore }
+				orientation="vertical"
 				className={ className }
 				aria-label={ label }
 				role="grid"
 			>
-				{ examples
-					.filter( ( example ) =>
-						category ? example.category === category : true
-					)
-					.map( ( example ) => (
+				{ !! filteredExamples?.examples?.length &&
+					filteredExamples.examples.map( ( example ) => (
 						<Example
 							key={ example.name }
 							id={ `example-${ example.name }` }
 							title={ example.title }
+							content={ example.content }
 							blocks={ example.blocks }
-							isSelected={ isSelected( example.name ) }
-							onClick={ () => {
-								onSelect?.( example.name );
-							} }
+							isSelected={ isSelected?.( example.name ) }
+							onClick={
+								!! onSelect
+									? () => onSelect( example.name )
+									: null
+							}
 						/>
+					) ) }
+				{ !! filteredExamples?.subcategories?.length &&
+					filteredExamples.subcategories.map( ( subcategory ) => (
+						<Composite.Group
+							className="edit-site-style-book__subcategory"
+							key={ `subcategory-${ subcategory.slug }` }
+						>
+							<Composite.GroupLabel>
+								<h2 className="edit-site-style-book__subcategory-title">
+									{ subcategory.title }
+								</h2>
+							</Composite.GroupLabel>
+							<Subcategory
+								examples={ subcategory.examples }
+								isSelected={ isSelected }
+								onSelect={ onSelect }
+							/>
+						</Composite.Group>
 					) ) }
 			</Composite>
 		);
 	}
 );
 
-const Example = ( { id, title, blocks, isSelected, onClick } ) => {
+const Subcategory = ( { examples, isSelected, onSelect } ) => {
+	return (
+		!! examples?.length &&
+		examples.map( ( example ) => (
+			<Example
+				key={ example.name }
+				id={ `example-${ example.name }` }
+				title={ example.title }
+				content={ example.content }
+				blocks={ example.blocks }
+				isSelected={ isSelected?.( example.name ) }
+				onClick={ !! onSelect ? () => onSelect( example.name ) : null }
+			/>
+		) )
+	);
+};
+
+const disabledExamples = [ 'example-duotones' ];
+
+const Example = ( { id, title, blocks, isSelected, onClick, content } ) => {
 	const originalSettings = useSelect(
 		( select ) => select( blockEditorStore ).getSettings(),
 		[]
@@ -427,7 +659,7 @@ const Example = ( { id, title, blocks, isSelected, onClick } ) => {
 		() => ( {
 			...originalSettings,
 			focusMode: false, // Disable "Spotlight mode".
-			__unstableIsPreviewMode: true,
+			isPreviewMode: true,
 		} ),
 		[ originalSettings ]
 	);
@@ -438,22 +670,36 @@ const Example = ( { id, title, blocks, isSelected, onClick } ) => {
 		[ blocks ]
 	);
 
+	const disabledProps =
+		disabledExamples.includes( id ) || ! onClick
+			? {
+					disabled: true,
+					accessibleWhenDisabled: !! onClick,
+			  }
+			: {};
+
 	return (
 		<div role="row">
 			<div role="gridcell">
-				<CompositeItem
+				<Composite.Item
 					className={ clsx( 'edit-site-style-book__example', {
 						'is-selected': isSelected,
+						'is-disabled-example': !! disabledProps?.disabled,
 					} ) }
 					id={ id }
-					aria-label={ sprintf(
-						// translators: %s: Title of a block, e.g. Heading.
-						__( 'Open %s styles in Styles panel' ),
-						title
-					) }
+					aria-label={
+						!! onClick
+							? sprintf(
+									// translators: %s: Title of a block, e.g. Heading.
+									__( 'Open %s styles in Styles panel' ),
+									title
+							  )
+							: undefined
+					}
 					render={ <div /> }
-					role="button"
+					role={ !! onClick ? 'button' : null }
 					onClick={ onClick }
+					{ ...disabledProps }
 				>
 					<span className="edit-site-style-book__example-title">
 						{ title }
@@ -463,15 +709,20 @@ const Example = ( { id, title, blocks, isSelected, onClick } ) => {
 						aria-hidden
 					>
 						<Disabled className="edit-site-style-book__example-preview__content">
-							<ExperimentalBlockEditorProvider
-								value={ renderedBlocks }
-								settings={ settings }
-							>
-								<BlockList renderAppender={ false } />
-							</ExperimentalBlockEditorProvider>
+							{ content ? (
+								content
+							) : (
+								<ExperimentalBlockEditorProvider
+									value={ renderedBlocks }
+									settings={ settings }
+								>
+									<EditorStyles />
+									<BlockList renderAppender={ false } />
+								</ExperimentalBlockEditorProvider>
+							) }
 						</Disabled>
 					</div>
-				</CompositeItem>
+				</Composite.Item>
 			</div>
 		</div>
 	);

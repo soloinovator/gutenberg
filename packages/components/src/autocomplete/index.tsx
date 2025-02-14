@@ -13,7 +13,6 @@ import {
 	useRef,
 	useMemo,
 } from '@wordpress/element';
-import { __, _n } from '@wordpress/i18n';
 import { useInstanceId, useMergeRefs, useRefEffect } from '@wordpress/compose';
 import {
 	create,
@@ -73,6 +72,9 @@ const getNodeText = ( node: React.ReactNode ): string => {
 
 const EMPTY_FILTERED_OPTIONS: KeyedOption[] = [];
 
+// Used for generating the instance ID
+const AUTOCOMPLETE_HOOK_REFERENCE = {};
+
 export function useAutocomplete( {
 	record,
 	onChange,
@@ -80,7 +82,7 @@ export function useAutocomplete( {
 	completers,
 	contentRef,
 }: UseAutocompleteProps ) {
-	const instanceId = useInstanceId( useAutocomplete );
+	const instanceId = useInstanceId( AUTOCOMPLETE_HOOK_REFERENCE );
 	const [ selectedIndex, setSelectedIndex ] = useState( 0 );
 
 	const [ filteredOptions, setFilteredOptions ] = useState<
@@ -95,7 +97,7 @@ export function useAutocomplete( {
 		( ( props: AutocompleterUIProps ) => JSX.Element | null ) | null
 	>( null );
 
-	const backspacing = useRef( false );
+	const backspacingRef = useRef( false );
 
 	function insertCompletion( replacement: React.ReactNode ) {
 		if ( autocompleter === null ) {
@@ -175,7 +177,7 @@ export function useAutocomplete( {
 	}
 
 	function handleKeyDown( event: KeyboardEvent ) {
-		backspacing.current = event.key === 'Backspace';
+		backspacingRef.current = event.key === 'Backspace';
 
 		if ( ! autocompleter ) {
 			return;
@@ -321,7 +323,7 @@ export function useAutocomplete( {
 		// Ex: "Some text @marcelo sekkkk" <--- "kkkk" caused a mismatch, but
 		// if the user presses backspace here, it will show the completion popup again.
 		const matchingWhileBackspacing =
-			backspacing.current && wordsFromTrigger.length <= 3;
+			backspacingRef.current && wordsFromTrigger.length <= 3;
 
 		if ( mismatch && ! ( matchingWhileBackspacing || hasOneTriggerWord ) ) {
 			if ( autocompleter ) {
@@ -378,9 +380,8 @@ export function useAutocomplete( {
 				: AutocompleterUI
 		);
 		setFilterValue( query === null ? '' : query );
-		// Temporarily disabling exhaustive-deps to avoid introducing unexpected side effecst.
+		// We want to avoid introducing unexpected side effects.
 		// See https://github.com/WordPress/gutenberg/pull/41820
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [ textContent ] );
 
 	const { key: selectedKey = '' } = filteredOptions[ selectedIndex ] || {};

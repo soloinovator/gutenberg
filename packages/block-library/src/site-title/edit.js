@@ -17,22 +17,32 @@ import {
 	useBlockProps,
 	HeadingLevelDropdown,
 } from '@wordpress/block-editor';
-import { ToggleControl, PanelBody } from '@wordpress/components';
+import {
+	ToggleControl,
+	__experimentalToolsPanel as ToolsPanel,
+	__experimentalToolsPanelItem as ToolsPanelItem,
+} from '@wordpress/components';
 import { createBlock, getDefaultBlockName } from '@wordpress/blocks';
 import { decodeEntities } from '@wordpress/html-entities';
 
-const HEADING_LEVELS = [ 0, 1, 2, 3, 4, 5, 6 ];
+/**
+ * Internal dependencies
+ */
+import { useToolsPanelDropdownMenuProps } from '../utils/hooks';
 
 export default function SiteTitleEdit( {
 	attributes,
 	setAttributes,
 	insertBlocksAfter,
 } ) {
-	const { level, textAlign, isLink, linkTarget } = attributes;
+	const { level, levelOptions, textAlign, isLink, linkTarget } = attributes;
 	const { canUserEdit, title } = useSelect( ( select ) => {
 		const { canUser, getEntityRecord, getEditedEntityRecord } =
 			select( coreStore );
-		const canEdit = canUser( 'update', 'settings' );
+		const canEdit = canUser( 'update', {
+			kind: 'root',
+			name: 'site',
+		} );
 		const settings = canEdit ? getEditedEntityRecord( 'root', 'site' ) : {};
 		const readOnlySettings = getEntityRecord( 'root', '__unstableBase' );
 
@@ -42,6 +52,7 @@ export default function SiteTitleEdit( {
 		};
 	}, [] );
 	const { editEntityRecord } = useDispatch( coreStore );
+	const dropdownMenuProps = useToolsPanelDropdownMenuProps();
 
 	function setTitle( newTitle ) {
 		editEntityRecord( 'root', 'site', undefined, {
@@ -94,8 +105,8 @@ export default function SiteTitleEdit( {
 		<>
 			<BlockControls group="block">
 				<HeadingLevelDropdown
-					options={ HEADING_LEVELS }
 					value={ level }
+					options={ levelOptions }
 					onChange={ ( newLevel ) =>
 						setAttributes( { level: newLevel } )
 					}
@@ -108,26 +119,53 @@ export default function SiteTitleEdit( {
 				/>
 			</BlockControls>
 			<InspectorControls>
-				<PanelBody title={ __( 'Settings' ) }>
-					<ToggleControl
-						__nextHasNoMarginBottom
+				<ToolsPanel
+					label={ __( 'Settings' ) }
+					resetAll={ () => {
+						setAttributes( {
+							isLink: true,
+							linkTarget: '_self',
+						} );
+					} }
+					dropdownMenuProps={ dropdownMenuProps }
+				>
+					<ToolsPanelItem
+						hasValue={ () => ! isLink }
 						label={ __( 'Make title link to home' ) }
-						onChange={ () => setAttributes( { isLink: ! isLink } ) }
-						checked={ isLink }
-					/>
-					{ isLink && (
+						onDeselect={ () => setAttributes( { isLink: true } ) }
+						isShownByDefault
+					>
 						<ToggleControl
 							__nextHasNoMarginBottom
-							label={ __( 'Open in new tab' ) }
-							onChange={ ( value ) =>
-								setAttributes( {
-									linkTarget: value ? '_blank' : '_self',
-								} )
+							label={ __( 'Make title link to home' ) }
+							onChange={ () =>
+								setAttributes( { isLink: ! isLink } )
 							}
-							checked={ linkTarget === '_blank' }
+							checked={ isLink }
 						/>
+					</ToolsPanelItem>
+					{ isLink && (
+						<ToolsPanelItem
+							hasValue={ () => linkTarget !== '_self' }
+							label={ __( 'Open in new tab' ) }
+							onDeselect={ () =>
+								setAttributes( { linkTarget: '_self' } )
+							}
+							isShownByDefault
+						>
+							<ToggleControl
+								__nextHasNoMarginBottom
+								label={ __( 'Open in new tab' ) }
+								onChange={ ( value ) =>
+									setAttributes( {
+										linkTarget: value ? '_blank' : '_self',
+									} )
+								}
+								checked={ linkTarget === '_blank' }
+							/>
+						</ToolsPanelItem>
 					) }
-				</PanelBody>
+				</ToolsPanel>
 			</InspectorControls>
 			{ siteTitleContent }
 		</>

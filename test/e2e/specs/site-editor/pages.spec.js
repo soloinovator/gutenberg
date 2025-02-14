@@ -5,10 +5,10 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 
 async function draftNewPage( page ) {
 	await page.getByRole( 'button', { name: 'Pages' } ).click();
-	await page.getByRole( 'button', { name: 'Add new page' } ).click();
+	await page.getByRole( 'button', { name: 'Add page' } ).click();
 	await page
-		.locator( 'role=dialog[name="Draft a new page"i]' )
-		.locator( 'role=textbox[name="Page title"i]' )
+		.locator( 'role=dialog[name="Draft new: page"i]' )
+		.locator( 'role=textbox[name="title"i]' )
 		.fill( 'Test Page' );
 	await page.keyboard.press( 'Enter' );
 	await expect(
@@ -36,7 +36,9 @@ async function addPageContent( editor, page ) {
 		.fill( 'Lorem ipsum dolor sit amet' );
 
 	// Insert into Page Content using global inserter.
-	await page.getByRole( 'button', { name: 'Toggle block inserter' } ).click();
+	await page
+		.getByRole( 'button', { name: 'Block Inserter', exact: true } )
+		.click();
 	await page.getByRole( 'option', { name: 'Heading', exact: true } ).click();
 	await editor.canvas
 		.getByRole( 'document', {
@@ -245,7 +247,7 @@ test.describe( 'Pages', () => {
 		// Create a custom template first.
 		const templateName = 'demo';
 		await page.getByRole( 'button', { name: 'Templates' } ).click();
-		await page.getByRole( 'button', { name: 'Add New Template' } ).click();
+		await page.getByRole( 'button', { name: 'Add template' } ).click();
 		await page
 			.getByRole( 'button', {
 				name: 'A custom template can be manually applied to any post or page.',
@@ -270,6 +272,7 @@ test.describe( 'Pages', () => {
 
 		// Create new page that has the default template so as to swap it.
 		await draftNewPage( page );
+		await page.locator( 'role=button[name="Block Inserter"i]' ).click();
 		await editor.openDocumentSettingsSidebar();
 		const templateOptionsButton = page
 			.getByRole( 'region', { name: 'Editor settings' } )
@@ -278,7 +281,7 @@ test.describe( 'Pages', () => {
 		await templateOptionsButton.click();
 		await page
 			.getByRole( 'menu', { name: 'Template options' } )
-			.getByText( 'Swap template' )
+			.getByText( 'Change template' )
 			.click();
 		const templateItem = page.locator(
 			'.block-editor-block-patterns-list__item-title'
@@ -292,6 +295,7 @@ test.describe( 'Pages', () => {
 		} );
 
 		// Now reset, and apply the default template back.
+		await editor.openDocumentSettingsSidebar();
 		await templateOptionsButton.click();
 		const resetButton = page
 			.getByRole( 'menu', { name: 'Template options' } )
@@ -301,11 +305,12 @@ test.describe( 'Pages', () => {
 		await expect( templateOptionsButton ).toHaveText( 'Single Entries' );
 	} );
 
-	test( 'swap template options should respect the declared `postTypes`', async ( {
+	test( 'change template options should respect the declared `postTypes`', async ( {
 		page,
 		editor,
 	} ) => {
 		await draftNewPage( page );
+		await page.locator( 'role=button[name="Block Inserter"i]' ).click();
 		await editor.openDocumentSettingsSidebar();
 		const templateOptionsButton = page
 			.getByRole( 'region', { name: 'Editor settings' } )
@@ -316,7 +321,7 @@ test.describe( 'Pages', () => {
 		await expect(
 			page
 				.getByRole( 'menu', { name: 'Template options' } )
-				.getByText( 'Swap template' )
+				.getByText( 'Change template' )
 		).toHaveCount( 0 );
 	} );
 } );

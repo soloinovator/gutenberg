@@ -8,6 +8,7 @@ import { isUnmodifiedDefaultBlock } from '@wordpress/blocks';
  * Internal dependencies
  */
 import { store as blockEditorStore } from '../../store';
+import { unlock } from '../../lock-unlock';
 
 /**
  * Source of truth for which block tools are showing in the block editor.
@@ -20,39 +21,38 @@ export function useShowBlockTools() {
 			getSelectedBlockClientId,
 			getFirstMultiSelectedBlockClientId,
 			getBlock,
+			getBlockMode,
 			getSettings,
-			hasMultiSelection,
 			__unstableGetEditorMode,
 			isTyping,
-		} = select( blockEditorStore );
+		} = unlock( select( blockEditorStore ) );
 
 		const clientId =
 			getSelectedBlockClientId() || getFirstMultiSelectedBlockClientId();
 
-		const block = getBlock( clientId ) || { name: '', attributes: {} };
+		const block = getBlock( clientId );
 		const editorMode = __unstableGetEditorMode();
-		const hasSelectedBlock = clientId && block?.name;
-		const isEmptyDefaultBlock = isUnmodifiedDefaultBlock( block );
+		const hasSelectedBlock = !! clientId && !! block;
+		const isEmptyDefaultBlock =
+			hasSelectedBlock &&
+			isUnmodifiedDefaultBlock( block ) &&
+			getBlockMode( clientId ) !== 'html';
 		const _showEmptyBlockSideInserter =
 			clientId &&
 			! isTyping() &&
-			editorMode === 'edit' &&
+			// Hide the block inserter on the navigation mode.
+			// See https://github.com/WordPress/gutenberg/pull/66636#discussion_r1824728483.
+			editorMode !== 'navigation' &&
 			isEmptyDefaultBlock;
-		const maybeShowBreadcrumb =
+		const _showBlockToolbarPopover =
+			! getSettings().hasFixedToolbar &&
+			! _showEmptyBlockSideInserter &&
 			hasSelectedBlock &&
-			! hasMultiSelection() &&
-			( editorMode === 'navigation' || editorMode === 'zoom-out' );
+			! isEmptyDefaultBlock;
 
 		return {
 			showEmptyBlockSideInserter: _showEmptyBlockSideInserter,
-			showBreadcrumb:
-				! _showEmptyBlockSideInserter && maybeShowBreadcrumb,
-			showBlockToolbarPopover:
-				! getSettings().hasFixedToolbar &&
-				! _showEmptyBlockSideInserter &&
-				hasSelectedBlock &&
-				! isEmptyDefaultBlock &&
-				! maybeShowBreadcrumb,
+			showBlockToolbarPopover: _showBlockToolbarPopover,
 		};
 	}, [] );
 }

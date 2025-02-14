@@ -8,9 +8,9 @@ import {
 	VisuallyHidden,
 	__experimentalVStack as VStack,
 } from '@wordpress/components';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, sprintf, isRTL } from '@wordpress/i18n';
 import {
-	__experimentalLinkControl as LinkControl,
+	LinkControl,
 	store as blockEditorStore,
 	privateApis as blockEditorPrivateApis,
 } from '@wordpress/block-editor';
@@ -28,7 +28,7 @@ import {
 } from '@wordpress/core-data';
 import { decodeEntities } from '@wordpress/html-entities';
 import { useSelect, useDispatch } from '@wordpress/data';
-import { chevronLeftSmall, plus } from '@wordpress/icons';
+import { chevronLeftSmall, chevronRightSmall, plus } from '@wordpress/icons';
 import { useInstanceId, useFocusOnMount } from '@wordpress/compose';
 
 /**
@@ -78,7 +78,7 @@ export function getSuggestionsQuery( type, kind ) {
 	}
 }
 
-function LinkUIBlockInserter( { clientId, onBack, onSelectBlock } ) {
+function LinkUIBlockInserter( { clientId, onBack } ) {
 	const { rootBlockClientId } = useSelect(
 		( select ) => {
 			const { getBlockRootClientId } = select( blockEditorStore );
@@ -96,7 +96,7 @@ function LinkUIBlockInserter( { clientId, onBack, onSelectBlock } ) {
 		LinkControl,
 		`link-ui-block-inserter__title`
 	);
-	const dialogDescritionId = useInstanceId(
+	const dialogDescriptionId = useInstanceId(
 		LinkControl,
 		`link-ui-block-inserter__description`
 	);
@@ -110,20 +110,20 @@ function LinkUIBlockInserter( { clientId, onBack, onSelectBlock } ) {
 			className="link-ui-block-inserter"
 			role="dialog"
 			aria-labelledby={ dialogTitleId }
-			aria-describedby={ dialogDescritionId }
+			aria-describedby={ dialogDescriptionId }
 			ref={ focusOnMountRef }
 		>
 			<VisuallyHidden>
 				<h2 id={ dialogTitleId }>{ __( 'Add block' ) }</h2>
 
-				<p id={ dialogDescritionId }>
+				<p id={ dialogDescriptionId }>
 					{ __( 'Choose a block to add to your Navigation.' ) }
 				</p>
 			</VisuallyHidden>
 
 			<Button
 				className="link-ui-block-inserter__back"
-				icon={ chevronLeftSmall }
+				icon={ isRTL() ? chevronRightSmall : chevronLeftSmall }
 				onClick={ ( e ) => {
 					e.preventDefault();
 					onBack();
@@ -140,22 +140,24 @@ function LinkUIBlockInserter( { clientId, onBack, onSelectBlock } ) {
 				prioritizePatterns={ false }
 				selectBlockOnInsert
 				hasSearch={ false }
-				onSelect={ onSelectBlock }
 			/>
 		</div>
 	);
 }
 
 function UnforwardedLinkUI( props, ref ) {
+	const { label, url, opensInNewTab, type, kind } = props.link;
+	const postType = type || 'page';
+
 	const [ addingBlock, setAddingBlock ] = useState( false );
 	const [ focusAddBlockButton, setFocusAddBlockButton ] = useState( false );
 	const { saveEntityRecord } = useDispatch( coreStore );
-	const pagesPermissions = useResourcePermissions( 'pages' );
-	const postsPermissions = useResourcePermissions( 'posts' );
+	const permissions = useResourcePermissions( {
+		kind: 'postType',
+		name: postType,
+	} );
 
 	async function handleCreate( pageTitle ) {
-		const postType = props.link.type || 'page';
-
 		const page = await saveEntityRecord( 'postType', postType, {
 			title: pageTitle,
 			status: 'draft',
@@ -180,15 +182,6 @@ function UnforwardedLinkUI( props, ref ) {
 		};
 	}
 
-	const { label, url, opensInNewTab, type, kind } = props.link;
-
-	let userCanCreate = false;
-	if ( ! type || type === 'page' ) {
-		userCanCreate = pagesPermissions.canCreate;
-	} else if ( type === 'post' ) {
-		userCanCreate = postsPermissions.canCreate;
-	}
-
 	// Memoize link value to avoid overriding the LinkControl's internal state.
 	// This is a temporary fix. See https://github.com/WordPress/gutenberg/issues/50976#issuecomment-1568226407.
 	const link = useMemo(
@@ -204,14 +197,10 @@ function UnforwardedLinkUI( props, ref ) {
 		LinkUI,
 		`link-ui-link-control__title`
 	);
-	const dialogDescritionId = useInstanceId(
+	const dialogDescriptionId = useInstanceId(
 		LinkUI,
 		`link-ui-link-control__description`
 	);
-
-	// Selecting a block should close the popover and also remove the (previously) automatically inserted
-	// link block so that the newly selected block can be inserted in its place.
-	const { onClose: onSelectBlock } = props;
 
 	return (
 		<Popover
@@ -225,12 +214,12 @@ function UnforwardedLinkUI( props, ref ) {
 				<div
 					role="dialog"
 					aria-labelledby={ dialogTitleId }
-					aria-describedby={ dialogDescritionId }
+					aria-describedby={ dialogDescriptionId }
 				>
 					<VisuallyHidden>
 						<h2 id={ dialogTitleId }>{ __( 'Add link' ) }</h2>
 
-						<p id={ dialogDescritionId }>
+						<p id={ dialogDescriptionId }>
 							{ __(
 								'Search for and add a link to your Navigation.'
 							) }
@@ -241,7 +230,7 @@ function UnforwardedLinkUI( props, ref ) {
 						hasRichPreviews
 						value={ link }
 						showInitialSuggestions
-						withCreateSuggestion={ userCanCreate }
+						withCreateSuggestion={ permissions.canCreate }
 						createSuggestion={ handleCreate }
 						createSuggestionButtonText={ ( searchTerm ) => {
 							let format;
@@ -293,7 +282,6 @@ function UnforwardedLinkUI( props, ref ) {
 						setAddingBlock( false );
 						setFocusAddBlockButton( true );
 					} }
-					onSelectBlock={ onSelectBlock }
 				/>
 			) }
 		</Popover>
@@ -316,6 +304,7 @@ const LinkUITools = ( { setAddingBlock, focusAddBlockButton } ) => {
 	return (
 		<VStack className="link-ui-tools">
 			<Button
+				__next40pxDefaultSize
 				ref={ addBlockButtonRef }
 				icon={ plus }
 				onClick={ ( e ) => {

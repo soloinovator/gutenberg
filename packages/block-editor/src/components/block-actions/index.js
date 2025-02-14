@@ -11,7 +11,6 @@ import {
 /**
  * Internal dependencies
  */
-import { useNotifyCopy } from '../../utils/use-notify-copy';
 import usePasteStyles from '../use-paste-styles';
 import { store as blockEditorStore } from '../../store';
 
@@ -29,7 +28,6 @@ export default function BlockActions( {
 				getBlockRootClientId,
 				getBlocksByClientId,
 				getDirectInsertBlock,
-				canMoveBlocks,
 				canRemoveBlocks,
 			} = select( blockEditorStore );
 
@@ -44,7 +42,6 @@ export default function BlockActions( {
 				: null;
 
 			return {
-				canMove: canMoveBlocks( clientIds ),
 				canRemove: canRemoveBlocks( clientIds ),
 				canInsertBlock: canInsertDefaultBlock || !! directInsertBlock,
 				canCopyStyles: blocks.every( ( block ) => {
@@ -67,8 +64,7 @@ export default function BlockActions( {
 	);
 	const { getBlocksByClientId, getBlocks } = useSelect( blockEditorStore );
 
-	const { canMove, canRemove, canInsertBlock, canCopyStyles, canDuplicate } =
-		selected;
+	const { canRemove, canInsertBlock, canCopyStyles, canDuplicate } = selected;
 
 	const {
 		removeBlocks,
@@ -77,19 +73,14 @@ export default function BlockActions( {
 		insertAfterBlock,
 		insertBeforeBlock,
 		flashBlock,
-		setBlockMovingClientId,
-		setNavigationMode,
-		selectBlock,
 	} = useDispatch( blockEditorStore );
 
-	const notifyCopy = useNotifyCopy();
 	const pasteStyles = usePasteStyles();
 
 	return children( {
 		canCopyStyles,
 		canDuplicate,
 		canInsertBlock,
-		canMove,
 		canRemove,
 		onDuplicate() {
 			return duplicateBlocks( clientIds, updateSelection );
@@ -102,11 +93,6 @@ export default function BlockActions( {
 		},
 		onInsertAfter() {
 			insertAfterBlock( clientIds[ clientIds.length - 1 ] );
-		},
-		onMoveTo() {
-			setNavigationMode( true );
-			selectBlock( clientIds[ 0 ] );
-			setBlockMovingClientId( clientIds[ 0 ] );
 		},
 		onGroup() {
 			if ( ! clientIds.length ) {
@@ -142,7 +128,6 @@ export default function BlockActions( {
 			if ( clientIds.length === 1 ) {
 				flashBlock( clientIds[ 0 ] );
 			}
-			notifyCopy( 'copy', clientIds );
 		},
 		async onPasteStyles() {
 			await pasteStyles( getBlocksByClientId( clientIds ) );

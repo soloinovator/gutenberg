@@ -18,42 +18,32 @@ import { __ } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
-import { useScopedBlockVariations, useBlockNameForPatterns } from '../utils';
+import { useScopedBlockVariations } from '../utils';
+import { useBlockPatterns } from './pattern-selection';
 
 export default function QueryPlaceholder( {
 	attributes,
 	clientId,
 	name,
 	openPatternSelectionModal,
-	setAttributes,
 } ) {
 	const [ isStartingBlank, setIsStartingBlank ] = useState( false );
 	const blockProps = useBlockProps();
-	const blockNameForPatterns = useBlockNameForPatterns(
-		clientId,
-		attributes
-	);
-	const { blockType, activeBlockVariation, hasPatterns } = useSelect(
+	const { blockType, activeBlockVariation } = useSelect(
 		( select ) => {
 			const { getActiveBlockVariation, getBlockType } =
 				select( blocksStore );
-			const { getBlockRootClientId, getPatternsByBlockTypes } =
-				select( blockEditorStore );
-			const rootClientId = getBlockRootClientId( clientId );
 			return {
 				blockType: getBlockType( name ),
 				activeBlockVariation: getActiveBlockVariation(
 					name,
 					attributes
 				),
-				hasPatterns: !! getPatternsByBlockTypes(
-					blockNameForPatterns,
-					rootClientId
-				).length,
 			};
 		},
-		[ name, blockNameForPatterns, clientId, attributes ]
+		[ name, attributes ]
 	);
+	const hasPatterns = !! useBlockPatterns( clientId, attributes ).length;
 	const icon =
 		activeBlockVariation?.icon?.src ||
 		activeBlockVariation?.icon ||
@@ -64,7 +54,6 @@ export default function QueryPlaceholder( {
 			<QueryVariationPicker
 				clientId={ clientId }
 				attributes={ attributes }
-				setAttributes={ setAttributes }
 				icon={ icon }
 				label={ label }
 			/>
@@ -81,6 +70,7 @@ export default function QueryPlaceholder( {
 			>
 				{ !! hasPatterns && (
 					<Button
+						__next40pxDefaultSize
 						variant="primary"
 						onClick={ openPatternSelectionModal }
 					>
@@ -89,6 +79,7 @@ export default function QueryPlaceholder( {
 				) }
 
 				<Button
+					__next40pxDefaultSize
 					variant="secondary"
 					onClick={ () => {
 						setIsStartingBlank( true );
@@ -101,13 +92,7 @@ export default function QueryPlaceholder( {
 	);
 }
 
-function QueryVariationPicker( {
-	clientId,
-	attributes,
-	setAttributes,
-	icon,
-	label,
-} ) {
+function QueryVariationPicker( { clientId, attributes, icon, label } ) {
 	const scopeVariations = useScopedBlockVariations( attributes );
 	const { replaceInnerBlocks } = useDispatch( blockEditorStore );
 	const blockProps = useBlockProps();
@@ -118,18 +103,6 @@ function QueryVariationPicker( {
 				label={ label }
 				variations={ scopeVariations }
 				onSelect={ ( variation ) => {
-					if ( variation.attributes ) {
-						setAttributes( {
-							...variation.attributes,
-							query: {
-								...variation.attributes.query,
-								postType:
-									attributes.query.postType ||
-									variation.attributes.query.postType,
-							},
-							namespace: attributes.namespace,
-						} );
-					}
 					if ( variation.innerBlocks ) {
 						replaceInnerBlocks(
 							clientId,

@@ -20,7 +20,7 @@ import { isRTL } from '@wordpress/i18n';
  * Internal dependencies
  */
 import { store as blockEditorStore } from '../../store';
-import { __unstableUseBlockElement as useBlockElement } from '../block-list/use-block-props/use-block-refs';
+import { useBlockElement } from '../block-list/use-block-props/use-block-refs';
 import usePopoverScroll from './use-popover-scroll';
 
 const MAX_POPOVER_RECOMPUTE_COUNTER = Number.MAX_SAFE_INTEGER;
@@ -148,6 +148,10 @@ function BlockPopoverInbetween( {
 								? nextRect.left - previousRect.right
 								: 0;
 					}
+
+					// Avoid a negative width which happens when the next rect
+					// is on the next line.
+					width = Math.max( width, 0 );
 				}
 
 				return new window.DOMRect( left, top, width, height );
